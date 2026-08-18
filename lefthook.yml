@@ -1,0 +1,17 @@
+# https://lefthook.dev/configuration/
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: format + lint
+      glob: "*.{js,ts,tsx,jsx,json,jsonc}"
+      run: bun biome check --staged --write
+      stage_fixed: true
+    - name: test
+      glob: "*.{js,ts,tsx,jsx}"
+      run: bun test
+
+commit-msg:
+  jobs:
+    - name: conventional commit
+      run: bun commitlint --edit {1}
