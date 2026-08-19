@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { resolveConfig } from '../src/config';
+import { type ClientConfig, resolveConfig } from '../src/config';
 import { type Cache, type CacheEntry, createCache } from '../src/core/cache';
 
 const entry: CacheEntry<unknown> = {
@@ -10,7 +10,7 @@ const entry: CacheEntry<unknown> = {
 };
 
 /** Resolve a cache, asserting it is enabled (not null) — one non-null site. */
-function makeCache(clientId = 'c', extra: Parameters<typeof resolveConfig>[0] = {}): Cache {
+function makeCache(clientId = 'c', extra: Partial<ClientConfig> = {}): Cache {
     const cache = createCache(resolveConfig({ clientId, ...extra }));
     expect(cache).not.toBeNull();
     // biome-ignore lint/style/noNonNullAssertion: asserted above
