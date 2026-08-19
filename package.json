@@ -1,6 +1,6 @@
 {
     "name": "jamendo-ts-client",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "description": "TypeScript client for the Jamendo API",
     "license": "MIT",
     "author": "Angel S. Moreno",
@@ -43,5 +43,11 @@
         "fallow": "^3.17.0",
         "lefthook": "^2.1.10",
         "typescript": "^7.0.2"
+    },
+    "dependencies": {
+        "keyv": "^5.6.0",
+        "ofetch": "^1.5.1",
+        "p-retry": "^8.0.0",
+        "zod": "^4.4.3"
     }
 }
