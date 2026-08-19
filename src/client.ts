@@ -6,12 +6,12 @@ import { type ApiResult, createRequest, type RequestFn, type RequestOptions } fr
 import { type TracksApi, tracks } from './endpoints/tracks';
 
 export interface Client {
-    request<T>(
+    request<T, R = T[]>(
         method: 'GET' | 'POST',
         path: string,
         params: Record<string, unknown>,
-        options: RequestOptions<T>
-    ): Promise<ApiResult<T>>;
+        options: RequestOptions<T, R>
+    ): Promise<ApiResult<T, R>>;
     tracks: TracksApi;
 }
 

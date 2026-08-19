@@ -3,8 +3,10 @@ import { z } from 'zod';
 /**
  * Envelope zod schemas. Every Jamendo response wraps its payload in
  * `{ headers, results }`. These schemas validate that shape (strip mode —
- * unknown envelope fields are dropped). The `results` array is `z.unknown()`
- * here; per-endpoint schemas validate the elements in `core/validate.ts`.
+ * unknown envelope fields are dropped). `results` is `z.unknown()` here:
+ * nearly every endpoint returns an array (validated element-by-element in
+ * `core/validate.ts`), but `/autocomplete` returns an object keyed by entity.
+ * The per-endpoint path decides which shape to enforce.
  *
  * Note: `headers.status` is typed loosely as a string. The OpenAPI spec
  * documents `success` but the live API returns `succeed`; success is decided
@@ -23,7 +25,7 @@ export type Headers = z.infer<typeof HeadersSchema>;
 
 export const EnvelopeSchema = z.object({
     headers: HeadersSchema,
-    results: z.array(z.unknown()),
+    results: z.unknown(),
 });
 
 export type Envelope = z.infer<typeof EnvelopeSchema>;
