@@ -45,8 +45,11 @@ export function createCache(config: ResolvedConfig): Cache | null {
 
     return {
         keyFor(method, path, params) {
+            // Include baseUrl + clientId so two clients sharing a persistent
+            // store (different app or API origin) never resolve to each other's
+            // cached entries.
             return createHash('sha1')
-                .update(`${method}:${path}:${stableQuery(params)}:${tokenHash}`)
+                .update(`${config.baseUrl}:${config.clientId}:${method}:${path}:${stableQuery(params)}:${tokenHash}`)
                 .digest('hex');
         },
 

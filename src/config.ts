@@ -86,7 +86,7 @@ export function resolveConfig(config: ClientConfig): ResolvedConfig {
     if (!config.clientId) {
         throw new TypeError('createJamendoClient: clientId is required');
     }
-    return {
+    const resolved: ResolvedConfig = {
         clientId: config.clientId,
         accessToken: config.accessToken ?? '',
         baseUrl: config.baseUrl ?? DEFAULTS.baseUrl,
@@ -108,4 +108,11 @@ export function resolveConfig(config: ClientConfig): ResolvedConfig {
             onRateLimit: config.rateLimit?.onRateLimit ?? DEFAULTS.rateLimit.onRateLimit,
         },
     };
+    // A nonpositive concurrency cap deadlocks: the first acquire waits for a
+    // slot that can never free (nothing ever runs to call release), so every
+    // request hangs. Fail loud on misconfiguration instead.
+    if (Number.isFinite(resolved.rateLimit.maxConcurrent) && resolved.rateLimit.maxConcurrent <= 0) {
+        throw new RangeError('createJamendoClient: rateLimit.maxConcurrent must be a positive number (or Infinity)');
+    }
+    return resolved;
 }

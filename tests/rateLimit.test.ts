@@ -86,6 +86,29 @@ test('rateLimit: maxConcurrent=1 serializes calls', async () => {
     expect(maxSeen).toBe(1);
 });
 
+test('rateLimit: minIntervalMs spaces concurrent dispatches (no burst)', async () => {
+    const { run } = makeRunner({ rateLimit: { maxRetries: 0, minIntervalMs: 20 } });
+    const times: number[] = [];
+    const task = async () => {
+        times.push(Date.now());
+        return 'ok';
+    };
+    await Promise.all([run(task), run(task), run(task)]);
+    times.sort((a, b) => a - b);
+    for (let i = 1; i < times.length; i++) {
+        // biome-ignore lint/style/noNonNullAssertion: loop starts at 1, both indices valid
+        const gap = times[i]! - times[i - 1]!;
+        // Spacing targets are minIntervalMs apart; the scheduler may wake ~1ms
+        // early, so tolerate slack. The pre-fix burst gave gaps near 0.
+        expect(gap).toBeGreaterThanOrEqual(15);
+    }
+});
+
+test('rateLimit: nonpositive maxConcurrent is rejected (deadlock guard)', () => {
+    expect(() => makeRunner({ rateLimit: { maxConcurrent: 0 } })).toThrow(RangeError);
+    expect(() => makeRunner({ rateLimit: { maxConcurrent: -1 } })).toThrow(RangeError);
+});
+
 test('rateLimit: no throttle when both minInterval and concurrency are off', async () => {
     const { run } = makeRunner({ rateLimit: { maxRetries: 0 } });
     let concurrent = 0;

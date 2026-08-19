@@ -33,11 +33,17 @@ function createThrottle(config: ResolvedConfig): Throttle | null {
                 inFlight++;
             }
             if (minIntervalMs > 0) {
-                const elapsed = Date.now() - lastDispatch;
-                if (elapsed < minIntervalMs) {
-                    await sleep(minIntervalMs - elapsed);
+                // Claim the next dispatch slot synchronously before awaiting,
+                // so concurrent acquires each compute against an updated
+                // lastDispatch instead of racing on the same value and
+                // dispatching as a burst.
+                const now = Date.now();
+                const target = Math.max(now, lastDispatch + minIntervalMs);
+                lastDispatch = target;
+                const wait = target - now;
+                if (wait > 0) {
+                    await sleep(wait);
                 }
-                lastDispatch = Date.now();
             }
         },
         release() {

@@ -57,6 +57,16 @@ test('cache: access token isolates keys (user-scope isolation)', () => {
     expect(k1).not.toBe(k2);
 });
 
+test('cache: key isolates by clientId and baseUrl (shared-store isolation)', () => {
+    const a = makeCache('client-a');
+    const b = makeCache('client-b');
+    const c = makeCache('client-a', { baseUrl: 'https://other.example/v3.0' });
+    const params = { limit: 5 };
+    const ka = a.keyFor('GET', '/tracks', params);
+    expect(b.keyFor('GET', '/tracks', params)).not.toBe(ka);
+    expect(c.keyFor('GET', '/tracks', params)).not.toBe(ka);
+});
+
 test('cache: ttlFor uses per-endpoint override, else default', () => {
     const cache = makeCache('c', {
         cache: { defaultTtlMs: 60_000, ttlByEndpoint: { listTracks: 3_600_000 } },
