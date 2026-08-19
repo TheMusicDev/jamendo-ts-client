@@ -3,6 +3,13 @@ import { createCache } from './core/cache';
 import { createFetcher } from './core/fetcher';
 import { createRateLimiter } from './core/rateLimit';
 import { type ApiResult, createRequest, type RequestFn, type RequestOptions } from './core/request';
+import { type AlbumsApi, albums } from './endpoints/albums';
+import { type ArtistsApi, artists } from './endpoints/artists';
+import { type AutocompleteApi, autocomplete } from './endpoints/autocomplete';
+import { type FeedsApi, feeds } from './endpoints/feeds';
+import { type PlaylistsApi, playlists } from './endpoints/playlists';
+import { type RadiosApi, radios } from './endpoints/radios';
+import { type ReviewsApi, reviews } from './endpoints/reviews';
 import { type TracksApi, tracks } from './endpoints/tracks';
 
 export interface Client {
@@ -12,6 +19,13 @@ export interface Client {
         params: Record<string, unknown>,
         options: RequestOptions<T, R>
     ): Promise<ApiResult<T, R>>;
+    albums: AlbumsApi;
+    artists: ArtistsApi;
+    autocomplete: AutocompleteApi;
+    feeds: FeedsApi;
+    playlists: PlaylistsApi;
+    radios: RadiosApi;
+    reviews: ReviewsApi;
     tracks: TracksApi;
 }
 
@@ -26,5 +40,15 @@ export function createJamendoClient(config: ClientConfig): Client {
     const cache = createCache(resolved);
     const { run } = createRateLimiter(resolved);
     const request: RequestFn = createRequest(fetcher, cache, run);
-    return { request, tracks: tracks(request) };
+    return {
+        request,
+        albums: albums(request),
+        artists: artists(request),
+        autocomplete: autocomplete(request),
+        feeds: feeds(request),
+        playlists: playlists(request),
+        radios: radios(request),
+        reviews: reviews(request),
+        tracks: tracks(request),
+    };
 }

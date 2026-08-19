@@ -88,9 +88,36 @@ Jamendo's quota is dynamic and per-app; the API returns envelope code 6 when thr
 
 ## Resources
 
-- **tracks** — `list`, `similar`
+Every list method returns `ApiResult<T>`: `{ results, warnings, resultsCount?, resultsFullcount? }`. All list ops are cacheable GETs.
 
-More resources (albums, artists, playlists, users, reviews, feeds) follow the same pattern and are added incrementally.
+- **tracks** — `list`, `similar` (`similar` requires `id`)
+- **albums** — `list`, `tracks` (album + nested tracks), `musicinfo` (album + tags/description). `audioformat` restricted to `mp32` on `list`/`musicinfo`; full set on `tracks`.
+- **artists** — `list`, `tracks`, `albums`, `locations`, `musicinfo`. `location_radius` defaults server-side when omitted.
+- **playlists** — `list`, `tracks` (playlist + nested tracks). `audioformat` restricted to `mp32` on `list`; full set on `tracks`. `access_token` is injected by the fetcher, not passed as a param.
+- **radios** — `list`. `id` is an integer (unlike most resources where it's a string).
+- **reviews** — `albums`, `tracks`. `score`/`agreecnt`/ids are strings (the API does not coerce). `user_name` may resemble an email — treat as untrusted.
+- **feeds** — `list`. `lang` is a single-value enum (not an array). `title`/`text` are localized objects.
+- **autocomplete** — `autocomplete` (requires `prefix`, min 2 chars). **Non-standard shape:** `results` is an object keyed by entity (`tags?`/`artists?`/`tracks?`/`albums?`), not an array. Typed as `ApiResult<AutocompleteMatch, AutocompleteResults>`.
+
+```ts
+// albums with nested tracks
+const { results } = await client.albums.tracks({ id: [42] });
+for (const album of results) {
+  console.log(album.name, album.tracks?.length);
+}
+
+// autocomplete — results is an object, not an array
+const { results: matches } = await client.autocomplete.autocomplete({
+  prefix: 'ro',
+  entity: ['artists', 'tracks'],
+  matchcount: true,
+});
+for (const artist of matches.artists ?? []) {
+  console.log(artist.match, artist.count);
+}
+```
+
+File/stream endpoints (`/tracks/file`, `/albums/file`, `/playlists/file`, `/radios/stream` — 302 redirects, not JSON) and user-scoped writes (`/users/*`, `/setuser/*` — OAuth write semantics) are deferred to a later release.
 
 ## Development
 
