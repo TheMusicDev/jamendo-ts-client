@@ -32,13 +32,30 @@ export interface ApiResult<T, R = T[]> {
 
 type Runner = <T>(fn: RetryFn<T>) => Promise<T>;
 
-/** The public request entry point endpoint modules build on. */
-export type RequestFn = <T, R = T[]>(
-    method: 'GET' | 'POST',
-    path: string,
-    params: Record<string, unknown>,
-    options: RequestOptions<T, R>
-) => Promise<ApiResult<T, R>>;
+/**
+ * The public request entry point endpoint modules build on.
+ *
+ * Overloaded so a non-default `R` (whole-results shape, e.g. `/autocomplete`)
+ * can only be requested together with `resultsSchema`. Without `resultsSchema`
+ * the caller is bound to the standard array path `R = T[]`, which is the only
+ * branch that validates element-wise — this keeps the internal `as unknown as
+ * R` cast sound (R is T[] there) instead of letting a caller assert an object
+ * shape while the runtime still validates an array.
+ */
+export interface RequestFn {
+    <T>(
+        method: 'GET' | 'POST',
+        path: string,
+        params: Record<string, unknown>,
+        options: RequestOptions<T, T[]>
+    ): Promise<ApiResult<T, T[]>>;
+    <T, R>(
+        method: 'GET' | 'POST',
+        path: string,
+        params: Record<string, unknown>,
+        options: RequestOptions<T, R> & { resultsSchema: z.ZodType<R> }
+    ): Promise<ApiResult<T, R>>;
+}
 
 /**
  * Request orchestrator. Composes the layers a single API call flows through:

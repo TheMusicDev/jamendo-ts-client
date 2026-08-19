@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import { type ClientConfig, resolveConfig } from './config';
 import { createCache } from './core/cache';
 import { createFetcher } from './core/fetcher';
@@ -13,11 +14,17 @@ import { type ReviewsApi, reviews } from './endpoints/reviews';
 import { type TracksApi, tracks } from './endpoints/tracks';
 
 export interface Client {
-    request<T, R = T[]>(
+    request<T>(
         method: 'GET' | 'POST',
         path: string,
         params: Record<string, unknown>,
-        options: RequestOptions<T, R>
+        options: RequestOptions<T, T[]>
+    ): Promise<ApiResult<T, T[]>>;
+    request<T, R>(
+        method: 'GET' | 'POST',
+        path: string,
+        params: Record<string, unknown>,
+        options: RequestOptions<T, R> & { resultsSchema: z.ZodType<R> }
     ): Promise<ApiResult<T, R>>;
     albums: AlbumsApi;
     artists: ArtistsApi;
