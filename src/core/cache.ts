@@ -4,9 +4,9 @@ import { Keyv } from 'keyv';
 
 import type { ResolvedConfig } from '../config';
 
-/** What we cache: the validated, stripped results + envelope metadata. */
-export interface CacheEntry<T> {
-    results: T[];
+/** What we cache: the validated, stripped results container + envelope metadata. */
+export interface CacheEntry<R> {
+    results: R;
     warnings: string;
     resultsCount?: number;
     resultsFullcount?: number;
@@ -17,8 +17,8 @@ export interface Cache {
     keyFor(method: string, path: string, params: Record<string, unknown>): string;
     /** TTL (ms) for an endpoint, resolving per-endpoint overrides. */
     ttlFor(opId: string): number;
-    get<T>(key: string): Promise<CacheEntry<T> | undefined>;
-    set<T>(key: string, entry: CacheEntry<T>, ttlMs: number): Promise<void>;
+    get<R>(key: string): Promise<CacheEntry<R> | undefined>;
+    set<R>(key: string, entry: CacheEntry<R>, ttlMs: number): Promise<void>;
 }
 
 /** Deterministic query string so identical params in any order share a key. */
@@ -57,13 +57,13 @@ export function createCache(config: ResolvedConfig): Cache | null {
             return config.cache.ttlByEndpoint[opId] ?? config.cache.defaultTtlMs;
         },
 
-        async get<T>(key: string): Promise<CacheEntry<T> | undefined> {
+        async get<R>(key: string): Promise<CacheEntry<R> | undefined> {
             // Cache is type-erased storage; we store validated entries and trust the
-            // caller's T matches the schema that produced the entry.
-            return keyv.get<CacheEntry<unknown>>(key) as Promise<CacheEntry<T> | undefined>;
+            // caller's R matches the schema that produced the entry.
+            return keyv.get<CacheEntry<unknown>>(key) as Promise<CacheEntry<R> | undefined>;
         },
 
-        async set<T>(key: string, entry: CacheEntry<T>, ttlMs: number): Promise<void> {
+        async set<R>(key: string, entry: CacheEntry<R>, ttlMs: number): Promise<void> {
             await keyv.set(key, entry, ttlMs);
         },
     };

@@ -12,7 +12,21 @@ export { createJamendoClient } from './client';
 export type { CacheConfig, ClientConfig, RateLimitConfig, RateLimitInfo, ResolvedConfig } from './config';
 // Request result + errors
 export type { ApiResult, RequestOptions } from './core/request';
-// Tracks resource (types only — schemas stay internal)
+// Albums resource (types only — schemas stay internal)
+export type { AlbumsApi } from './endpoints/albums';
+// Artists resource
+export type { ArtistsApi } from './endpoints/artists';
+// Autocomplete resource
+export type { AutocompleteApi } from './endpoints/autocomplete';
+// Feeds resource
+export type { FeedsApi } from './endpoints/feeds';
+// Playlists resource
+export type { PlaylistsApi } from './endpoints/playlists';
+// Radios resource
+export type { RadiosApi } from './endpoints/radios';
+// Reviews resource
+export type { ReviewsApi } from './endpoints/reviews';
+// Tracks resource
 export type { TracksApi } from './endpoints/tracks';
 export {
     errorForCode,
@@ -21,6 +35,46 @@ export {
     JamendoRateLimit,
     JamendoSchemaError,
 } from './errors';
+export type {
+    Album,
+    AlbumMusicInfo,
+    AlbumsListParams,
+    AlbumsMusicinfoParams,
+    AlbumTrackItem,
+    AlbumTracksParams,
+    AlbumWithTracks,
+} from './schemas/albums';
+export type {
+    Artist,
+    ArtistAlbumItem,
+    ArtistAlbumsParams,
+    ArtistLocation,
+    ArtistLocationsParams,
+    ArtistMusicInfo,
+    ArtistsListParams,
+    ArtistsMusicinfoParams,
+    ArtistTrackItem,
+    ArtistTracksParams,
+    ArtistWithAlbums,
+    ArtistWithLocations,
+    ArtistWithTracks,
+} from './schemas/artists';
+export type {
+    AutocompleteMatch,
+    AutocompleteParams,
+    AutocompleteResults,
+} from './schemas/autocomplete';
+// Shared
+export type { LocalizedText } from './schemas/common';
+export type { Feed, FeedImages, FeedsListParams } from './schemas/feeds';
+export type {
+    Playlist,
+    PlaylistsListParams,
+    PlaylistTracksParams,
+    PlaylistWithTracks,
+} from './schemas/playlists';
+export type { Radio, RadiosListParams } from './schemas/radios';
+export type { AlbumReview, AlbumReviewsParams, TrackReview, TrackReviewsParams } from './schemas/reviews';
 export type {
     MusicInfo,
     SimilarTracksParams,

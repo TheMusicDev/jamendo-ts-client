@@ -1,9 +1,9 @@
 import { errorForCode, JamendoSchemaError } from '../errors';
 import { type Envelope, EnvelopeSchema, type Headers } from '../schemas/envelope';
 
-/** Parsed success envelope — the validated `results` plus envelope metadata. */
+/** Parsed success envelope — the raw `results` blob plus envelope metadata. */
 export interface ParsedEnvelope<T> {
-    results: T[];
+    results: T;
     warnings: string;
     resultsCount?: number;
     resultsFullcount?: number;
