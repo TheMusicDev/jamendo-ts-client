@@ -110,8 +110,12 @@ export function resolveConfig(config: ClientConfig): ResolvedConfig {
     };
     // A nonpositive concurrency cap deadlocks: the first acquire waits for a
     // slot that can never free (nothing ever runs to call release), so every
-    // request hangs. Fail loud on misconfiguration instead.
-    if (Number.isFinite(resolved.rateLimit.maxConcurrent) && resolved.rateLimit.maxConcurrent <= 0) {
+    // request hangs. NaN silently disables the cap (createThrottle treats it
+    // as non-finite), hiding a config bug. Fail loud on either.
+    if (
+        resolved.rateLimit.maxConcurrent !== Number.POSITIVE_INFINITY &&
+        (!Number.isFinite(resolved.rateLimit.maxConcurrent) || resolved.rateLimit.maxConcurrent <= 0)
+    ) {
         throw new RangeError('createJamendoClient: rateLimit.maxConcurrent must be a positive number (or Infinity)');
     }
     return resolved;

@@ -104,9 +104,11 @@ test('rateLimit: minIntervalMs spaces concurrent dispatches (no burst)', async (
     }
 });
 
-test('rateLimit: nonpositive maxConcurrent is rejected (deadlock guard)', () => {
+test('rateLimit: invalid maxConcurrent is rejected (deadlock / NaN guard)', () => {
     expect(() => makeRunner({ rateLimit: { maxConcurrent: 0 } })).toThrow(RangeError);
     expect(() => makeRunner({ rateLimit: { maxConcurrent: -1 } })).toThrow(RangeError);
+    expect(() => makeRunner({ rateLimit: { maxConcurrent: Number.NaN } })).toThrow(RangeError);
+    expect(() => makeRunner({ rateLimit: { maxConcurrent: Number.NEGATIVE_INFINITY } })).toThrow(RangeError);
 });
 
 test('rateLimit: no throttle when both minInterval and concurrency are off', async () => {
