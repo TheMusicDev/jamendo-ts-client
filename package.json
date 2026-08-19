@@ -1,6 +1,6 @@
 {
     "name": "jamendo-ts-client",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "description": "TypeScript client for the Jamendo API",
     "license": "MIT",
     "author": "Angel S. Moreno",
