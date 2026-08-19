@@ -23,6 +23,14 @@ export interface ApiResult<T> {
 
 type Runner = <T>(fn: RetryFn<T>) => Promise<T>;
 
+/** The public request entry point endpoint modules build on. */
+export type RequestFn = <T>(
+    method: 'GET' | 'POST',
+    path: string,
+    params: Record<string, unknown>,
+    options: RequestOptions<T>
+) => Promise<ApiResult<T>>;
+
 /**
  * Request orchestrator. Composes the layers a single API call flows through:
  *
