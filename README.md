@@ -94,7 +94,7 @@ Every list method returns `ApiResult<T>`: `{ results, warnings, resultsCount?, r
 - **albums** — `list`, `tracks` (album + nested tracks), `musicinfo` (album + tags/description). `audioformat` restricted to `mp32` on `list`/`musicinfo`; full set on `tracks`.
 - **artists** — `list`, `tracks`, `albums`, `locations`, `musicinfo`. `location_radius` defaults server-side when omitted.
 - **playlists** — `list`, `tracks` (playlist + nested tracks). `audioformat` restricted to `mp32` on `list`; full set on `tracks`. `access_token` is injected by the fetcher, not passed as a param.
-- **radios** — `list`. `id` is an integer (unlike most resources where it's a string).
+- **radios** — `list`, `stream`. `id` is an integer (unlike most resources where it's a string). `stream` returns a radio's stream URL, `playingnow` track, and `callmeback` ms; one of `id` or `name` is required. **Jamendo documents `stream` as broken** ("is not more working, and it could be never fixed") — tolerate live failure.
 - **reviews** — `albums`, `tracks`. `score`/`agreecnt`/ids are strings (the API does not coerce). `user_name` may resemble an email — treat as untrusted.
 - **feeds** — `list`. `lang` is a single-value enum (not an array). `title`/`text` are localized objects.
 - **autocomplete** — `autocomplete` (requires `prefix`, min 2 chars). **Non-standard shape:** `results` is an object keyed by entity (`tags?`/`artists?`/`tracks?`/`albums?`), not an array. Typed as `ApiResult<AutocompleteMatch, AutocompleteResults>`.
@@ -117,7 +117,7 @@ for (const artist of matches.artists ?? []) {
 }
 ```
 
-File/stream endpoints (`/tracks/file`, `/albums/file`, `/playlists/file`, `/radios/stream` — 302 redirects, not JSON) and user-scoped writes (`/users/*`, `/setuser/*` — OAuth write semantics) are deferred to a later release.
+File/stream endpoints (`/tracks/file`, `/albums/file`, `/playlists/file` — 302 redirects, not JSON) and user-scoped writes (`/users/*`, `/setuser/*` — OAuth write semantics) are deferred to a later release.
 
 ## Development
 
