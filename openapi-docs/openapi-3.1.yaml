@@ -1,0 +1,2866 @@
+openapi: 3.1.0
+info:
+  title: Jamendo API
+  summary: Read and write access to Jamendo's free-music catalog
+  version: "3.0"
+  description: >-
+    Jamendo API v3.0 — 20+ read methods over a catalog of ~500K tracks,
+    OAuth2-based authentication, and write methods to manage a user's
+    library. Not fully RESTful ("RESTlike" per Jamendo): every method is an
+    entity or entity+subentity path, GET for reads, POST for writes, no
+    entity id as a URL path segment. Every response document (json,
+    jsonpretty, or xml) wraps its payload in a `headers` object plus the
+    requested `results`.
+
+
+    This spec is generated independently from the markdown mirror under
+    `docs/` (not converted from `openapi-3.0.yaml`) and uses OpenAPI 3.1 /
+    JSON Schema 2020-12 idioms throughout. Jamendo's documented field
+    semantics use empty-string or zero sentinel values for "not applicable"
+    (e.g. `audiodownload: ""` when download isn't allowed) rather than JSON
+    `null`, so this spec does not use `type: [X, null]` — there is no
+    documented field that is genuinely absent/null rather than sentinel-valued.
+
+
+    Per `docs/02-response-codes.md`: Jamendo returns HTTP 200 with
+    `headers.status: "failed"` for most API-level errors rather than a
+    non-200 HTTP status. The 4xx/5xx responses below are modeled per the
+    source docs but should be confirmed against the live API (see
+    project-plan.md Step 3) before being treated as authoritative.
+  license:
+    name: Jamendo API Terms of Use
+    url: https://devportal.jamendo.com/
+servers:
+  - url: https://api.jamendo.com/v3.0
+    description: Jamendo API v3.0
+tags:
+  - name: tracks
+    description: The track entity — Jamendo's primary catalog object.
+  - name: albums
+    description: The album entity.
+  - name: artists
+    description: The artist entity.
+  - name: playlists
+    description: User-curated dynamic collections of tracks.
+  - name: radios
+    description: Curated Jamendo radio streams.
+  - name: reviews
+    description: User-submitted album/track reviews.
+  - name: users
+    description: Jamendo user lookup and their relations to artists/albums/tracks.
+  - name: feeds
+    description: Editorial feeds shown on the jamendo.com homepage.
+  - name: autocomplete
+    description: Name-prefix autocomplete over tracks, albums, artists, and tags.
+  - name: setuser
+    description: >-
+      OAuth2-protected write methods that modify the authenticated user's
+      music library (fan, favorite, like, dislike, myalbums).
+
+security: []
+
+paths:
+  /tracks:
+    get:
+      operationId: listTracks
+      tags: [tracks]
+      deprecated: false
+      summary: List tracks
+      description: >-
+        Track is the king entity in Jamendo — the main, most flexible read
+        method. Songs and tracks are the same entity. Since 2015, tracks can
+        exist with no album ("singles") — `type` selects single, albumtrack,
+        or both (default albumtrack only). `include` appends extra fields not
+        returned by default: licenses, musicinfo, stats, lyrics. `order`
+        supports many sort/boost combinations for charts and discovery; using
+        a non-relevance `order` as the first sort loses search relevance —
+        use `boost` instead to blend relevance with a rating signal.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          description: >-
+            Sort field(s), default `relevance`. Suffix a field with `_asc` or
+            `_desc`; rating-based orders default to (and force) descending.
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                [relevance, buzzrate, downloads_week, downloads_month,
+                 downloads_total, listens_week, listens_month, listens_total,
+                 popularity_week, popularity_month, popularity_total, name,
+                 album_name, artist_name, releasedate, duration, id,
+                 relevance_asc, relevance_desc, buzzrate_asc, buzzrate_desc,
+                 name_asc, name_desc, releasedate_asc, releasedate_desc,
+                 duration_asc, duration_desc, id_asc, id_desc]
+        - name: id
+          in: query
+          required: false
+          description: One or more track id.
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          description: Exact track name.
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          description: track_name substring search, UTF-8.
+          schema: { type: string }
+        - name: type
+          in: query
+          required: false
+          description: Track type filter. Default albumtrack only.
+          schema:
+            type: array
+            items: { type: string, enum: [single, albumtrack] }
+        - name: album_id
+          in: query
+          required: false
+          description: One or more album id.
+          schema: { type: array, items: { type: integer } }
+        - name: album_name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: artist_id
+          in: query
+          required: false
+          description: One or more artist id.
+          schema: { type: array, items: { type: integer } }
+        - name: artist_name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: content_id_free
+          in: query
+          required: false
+          description: Content ID free filter.
+          schema: { type: boolean }
+        - name: datebetween
+          in: query
+          required: false
+          description: Release date range, both bounds required.
+          schema: { type: string, format: date, examples: ["2020-01-01_2020-12-31"] }
+        - name: featured
+          in: query
+          required: false
+          description: Featured (Jamendo-team-selected) tracks only.
+          schema: { type: string, enum: ["true", "1"] }
+        - $ref: '#/components/parameters/ImageSizeStandard'
+        - $ref: '#/components/parameters/AudioFormat'
+        - $ref: '#/components/parameters/AudioDLFormat'
+        - name: tags
+          in: query
+          required: false
+          description: >-
+            Boolean AND tag search (genre/instrument/theme/nc). Some
+            synonym/language mapping applies; English recommended.
+          schema: { type: array, items: { type: string } }
+        - name: fuzzytags
+          in: query
+          required: false
+          description: Fuzzy OR tag search.
+          schema: { type: array, items: { type: string } }
+        - name: acousticelectric
+          in: query
+          required: false
+          schema: { type: string, enum: [acoustic, electric] }
+        - name: vocalinstrumental
+          in: query
+          required: false
+          schema: { type: string, enum: [vocal, instrumental] }
+        - name: gender
+          in: query
+          required: false
+          description: Singer gender (vocal tracks only).
+          schema: { type: string, enum: [male, female] }
+        - name: speed
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [verylow, low, medium, high, veryhigh] }
+        - name: lang
+          in: query
+          required: false
+          description: Lyrics language, 2-letter code.
+          schema: { type: array, items: { type: string, minLength: 2, maxLength: 2 } }
+        - name: durationbetween
+          in: query
+          required: false
+          description: Track duration range in seconds, both bounds required, `int_int`.
+          schema: { type: string, examples: ["60_300"] }
+        - name: xartist
+          in: query
+          required: false
+          description: Select tracks similar to a named non-Jamendo artist.
+          schema: { type: string }
+        - name: search
+          in: query
+          required: false
+          description: Free text search across track/album/artist name and tags.
+          schema: { type: string }
+        - name: prolicensing
+          in: query
+          required: false
+          description: Only tracks in the single-track commercial licensing program.
+          schema: { type: boolean }
+        - name: probackground
+          in: query
+          required: false
+          description: Only tracks in the background-music commercial program.
+          schema: { type: boolean }
+        - name: ccsa
+          in: query
+          required: false
+          description: Creative Commons Share Alike filter.
+          schema: { type: boolean }
+        - name: ccnd
+          in: query
+          required: false
+          description: Creative Commons No Derivs filter.
+          schema: { type: boolean }
+        - name: ccnc
+          in: query
+          required: false
+          description: Creative Commons Non Commercial filter.
+          schema: { type: boolean }
+        - name: include
+          in: query
+          required: false
+          description: Append extra fields not returned by default.
+          schema:
+            type: array
+            items: { type: string, enum: [licenses, musicinfo, stats, lyrics] }
+        - name: groupby
+          in: query
+          required: false
+          description: Aggregate results, one track per artist/album; use with `order` for charts.
+          schema: { type: string, enum: [artist_id, album_id] }
+        - name: boost
+          in: query
+          required: false
+          description: >-
+            Blend a rating signal into relevance-ordered search without
+            losing relevance. Implicit default popularity_month at lower
+            intensity than an explicit order.
+          schema:
+            type: string
+            enum: [buzzrate, downloads_week, downloads_month, downloads_total, listens_week, listens_month, listens_total, popularity_week, popularity_month, popularity_total]
+      responses:
+        '200':
+          description: List of tracks.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/Track' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /tracks/file:
+    get:
+      operationId: downloadTrackFile
+      tags: [tracks]
+      deprecated: false
+      summary: Download or stream a track's audio file
+      description: >-
+        Exception to the normal response shape — HTTP-redirects to the
+        requested audio file URL instead of returning a document. Does not
+        inherit `tracks` parameter declarations. An invalid request triggers
+        a plain HTTP error (404 or 500), not the standard `Error` JSON
+        envelope. Since Apr 2022, returns 404 if `audiodownload_allowed` /
+        `track_audiodownload_allowed` is false for the requested track.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/FullCount'
+        - $ref: '#/components/parameters/AudioFormat'
+        - name: action
+          in: query
+          required: false
+          description: Hints server-side request handling optimization.
+          schema: { type: string, enum: [download, stream], default: download }
+        - name: id
+          in: query
+          required: true
+          description: Single track id (redirect semantics; only one).
+          schema: { type: integer }
+      responses:
+        '302':
+          description: >-
+            Redirect to the audio file URL (binary redirect, not a JSON
+            document).
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+        '404':
+          description: >-
+            Track doesn't exist, or download not allowed. Plain HTTP error,
+            not the standard `Error` JSON envelope.
+        '500':
+          description: Malformed request. Plain HTTP error, not the standard `Error` JSON envelope.
+
+  /tracks/similar:
+    get:
+      operationId: listSimilarTracks
+      tags: [tracks]
+      deprecated: false
+      summary: Find tracks similar to a given track
+      description: >-
+        Given a track id, finds similar Jamendo tracks. Similarity is based
+        mostly on tags (genre, instrument, mood), then
+        acousticelectric/vocalinstrumental, then less-weighted
+        xartists_idstr/lang/gender. Results sorted by relevance via `score`
+        (max 1). Source docs describe `no_artist` and `no_album` identically
+        ("use that artist_id to exclude his tracks") — likely a copy-paste
+        error where `no_album` should take an album_id; confirm semantics
+        against the live API before relying on this.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - $ref: '#/components/parameters/ImageSizeStandard'
+        - $ref: '#/components/parameters/AudioFormat'
+        - $ref: '#/components/parameters/AudioDLFormat'
+        - name: include
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [licenses, musicinfo, stats, lyrics] }
+        - name: id
+          in: query
+          required: true
+          description: Reference track id to find similar tracks for.
+          schema: { type: integer }
+        - name: no_artist
+          in: query
+          required: false
+          description: >-
+            artist_id to exclude from results. Per docs, described
+            identically to `no_album` — likely a doc copy-paste; confirm
+            semantics against the live API.
+          schema: { type: integer }
+        - name: no_album
+          in: query
+          required: false
+          description: See `no_artist` note; likely intended to take an album_id.
+          schema: { type: integer }
+      responses:
+        '200':
+          description: >-
+            Tracks similar to the reference track, each with a `score`
+            field.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/TrackWithScore' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /albums:
+    get:
+      operationId: listAlbums
+      tags: [albums]
+      deprecated: false
+      summary: List albums
+      description: >-
+        Select and filter album entities. Albums have historically been
+        Jamendo's central entity though tracks are now primary. Since 2015,
+        tracks with no album ("singles") are also possible. `zip` is the
+        URL for downloading the album's tracks as an mp3 192kbps zip (also
+        downloadable directly via `/albums/file`).
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          description: Sort field(s); suffix _asc/_desc; popularity fields default+force desc.
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, releasedate, artist_id, artist_name, popularity_total, popularity_month, popularity_week] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: artist_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: artist_name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: datebetween
+          in: query
+          required: false
+          description: Release date range, both bounds required.
+          schema: { type: string, examples: ["2011-01-01_2012-01-01"] }
+        - $ref: '#/components/parameters/ImageSizeStandard'
+        - name: audioformat
+          in: query
+          required: false
+          description: Audio format for `zip`/`fileurl`; only mp32 exists today.
+          schema: { type: string, enum: [mp32] }
+        - name: type
+          in: query
+          required: false
+          description: Release type filter, default album+single.
+          schema:
+            type: array
+            items: { type: string, enum: [single, album] }
+      responses:
+        '200':
+          description: List of albums.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/Album' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /albums/file:
+    get:
+      operationId: downloadAlbumFile
+      tags: [albums]
+      deprecated: false
+      summary: Download an album's zip file
+      description: >-
+        Exception to the normal response shape — HTTP-redirects to the
+        requested zip file URL instead of returning a document. Does not
+        inherit `albums` parameter declarations. An invalid request triggers
+        a plain HTTP error (404 or 500), not the standard `Error` JSON
+        envelope. Since Apr 2022, returns 404 if `zip_allowed` is false for
+        the requested album.
+      security:
+        - apikey_auth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: Single album id (redirect semantics; only one).
+          schema: { type: integer }
+        - name: audioformat
+          in: query
+          required: false
+          description: Only mp32 (mp3 192kbps) exists today.
+          schema: { type: string, enum: [mp32] }
+      responses:
+        '302':
+          description: Redirect to the zip file URL (binary redirect, not a JSON document).
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+        '404':
+          description: >-
+            Album or file doesn't exist, or `zip_allowed` is false. Plain
+            HTTP error, not the standard `Error` JSON envelope.
+        '500':
+          description: Malformed request. Plain HTTP error, not the standard `Error` JSON envelope.
+
+  /albums/tracks:
+    get:
+      operationId: listAlbumTracks
+      tags: [albums]
+      deprecated: false
+      summary: List albums with their tracks
+      description: >-
+        Selects and filters album entities together with their belonging
+        tracks. Returns the same fields as `/albums`, plus a nested `tracks`
+        array with per-track fields.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, releasedate, artist_id, artist_name, popularity_total, popularity_month, popularity_week, track_id, track_name, track_position] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: artist_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: artist_name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: datebetween
+          in: query
+          required: false
+          schema: { type: string }
+        - $ref: '#/components/parameters/ImageSizeStandard'
+        - $ref: '#/components/parameters/AudioFormat'
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [single, album] }
+        - name: track_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: track_name
+          in: query
+          required: false
+          schema: { type: string }
+        - $ref: '#/components/parameters/AudioDLFormat'
+      responses:
+        '200':
+          description: Albums with their nested tracks.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/AlbumWithTracks' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /albums/musicinfo:
+    get:
+      operationId: listAlbumsMusicinfo
+      tags: [albums]
+      deprecated: false
+      summary: List albums with tags and description
+      description: >-
+        Returns the tags list of each album and its description (HTML) if
+        it exists. Adds a `tag` filter (single tag only) on top of all
+        `/albums` parameters.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, releasedate, artist_id, artist_name, popularity_total, popularity_month, popularity_week] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: artist_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: artist_name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: datebetween
+          in: query
+          required: false
+          schema: { type: string }
+        - $ref: '#/components/parameters/ImageSizeStandard'
+        - name: audioformat
+          in: query
+          required: false
+          schema: { type: string, enum: [mp32] }
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [single, album] }
+        - name: tag
+          in: query
+          required: false
+          description: Filter by one tag; English vocabulary recommended, no synonym support.
+          schema: { type: string }
+      responses:
+        '200':
+          description: Albums with musicinfo (tags + localized description).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/AlbumMusicInfo' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /artists:
+    get:
+      operationId: listArtists
+      tags: [artists]
+      deprecated: false
+      summary: List artists
+      description: >-
+        The artist entity, second most important after tracks. Filters by
+        obvious parameters and returns main fields only; submethods
+        (artists/tracks, artists/albums, artists/locations,
+        artists/musicinfo) provide more detail.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, joindate, popularity_total, popularity_month, popularity_week] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: hasimage
+          in: query
+          required: false
+          schema: { type: string, enum: ["true", "1"] }
+        - name: datebetween
+          in: query
+          required: false
+          description: Artist join-date range.
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of artists.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/Artist' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /artists/tracks:
+    get:
+      operationId: listArtistTracks
+      tags: [artists]
+      deprecated: false
+      summary: List artists with their tracks
+      description: >-
+        Returns each artist's tracks as a subentity. `track_type` selects
+        singles, album tracks, or both — default albumtrack only, since
+        singles leave all `album_*` fields empty.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, joindate, popularity_total, popularity_month, popularity_week, track_name, track_id, track_releasedate] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: hasimage
+          in: query
+          required: false
+          schema: { type: string, enum: ["true", "1"] }
+        - name: datebetween
+          in: query
+          required: false
+          schema: { type: string }
+        - name: track_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: track_name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: track_type
+          in: query
+          required: false
+          description: Default albumtrack only.
+          schema:
+            type: array
+            items: { type: string, enum: [single, albumtrack] }
+        - name: album_datebetween
+          in: query
+          required: false
+          description: Album creation date range.
+          schema: { type: string }
+        - name: album_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: album_name
+          in: query
+          required: false
+          schema: { type: string }
+        - $ref: '#/components/parameters/ImageSizeStandard'
+        - $ref: '#/components/parameters/AudioFormat'
+        - $ref: '#/components/parameters/AudioDLFormat'
+      responses:
+        '200':
+          description: Artists with their nested tracks.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/ArtistWithTracks' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /artists/albums:
+    get:
+      operationId: listArtistAlbums
+      tags: [artists]
+      deprecated: false
+      summary: List artists with their albums
+      description: Displays each artist's albums as a subentity, reorderable/filterable by basic parameters.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, joindate, popularity_total, popularity_month, popularity_week, album_name, album_id, album_releasedate] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: hasimage
+          in: query
+          required: false
+          schema: { type: string, enum: ["true", "1"] }
+        - name: datebetween
+          in: query
+          required: false
+          schema: { type: string }
+        - name: album_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: album_name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: album_datebetween
+          in: query
+          required: false
+          schema: { type: string }
+        - name: imagesize
+          in: query
+          required: false
+          description: >-
+            Album cover px size. Source doc's parameter table was malformed
+            for this field (Type column repeats the Description text) —
+            treated here as the standard imagesize enum shared across
+            entities; confirm against the live API if it diverges.
+          schema: { $ref: '#/components/schemas/ImageSizeStandardEnum' }
+      responses:
+        '200':
+          description: Artists with their nested albums.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/ArtistWithAlbums' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /artists/locations:
+    get:
+      operationId: listArtistLocations
+      tags: [artists]
+      deprecated: false
+      summary: List artists' declared geographical locations
+      description: >-
+        Selects and filters geographical locations artists have declared as
+        their reference. Filter by country and/or city name, or by a
+        lat/long coordinate pair (`location_coords`) plus a km radius
+        (`location_radius`).
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, joindate, popularity_total, popularity_month, popularity_week] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: hasimage
+          in: query
+          required: false
+          schema: { type: string, enum: ["true", "1"] }
+        - name: datebetween
+          in: query
+          required: false
+          schema: { type: string }
+        - name: haslocation
+          in: query
+          required: false
+          description: Only artists with (true) or without (false) declared locations.
+          schema: { type: boolean }
+        - name: location_country
+          in: query
+          required: false
+          description: >-
+            Artist country, ISO 3166-1 alpha-3 code(s). The full code list
+            is omitted here for brevity — use the standard ISO 3166-1
+            alpha-3 list (e.g. USA, ITA, GBR, DEU, FRA, ...).
+          schema: { type: array, items: { type: string, minLength: 3, maxLength: 3 } }
+        - name: location_city
+          in: query
+          required: false
+          schema: { type: string }
+        - name: location_coords
+          in: query
+          required: false
+          description: "`<latitude>_<longitude>` coordinate pair, both numeric."
+          schema: { type: string, examples: ["45.4637_9.18813"] }
+        - name: location_radius
+          in: query
+          required: false
+          description: Search radius in km around location_coords; ignored if location_coords not set.
+          schema: { type: integer, default: 1 }
+      responses:
+        '200':
+          description: Artists with their nested declared locations.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/ArtistWithLocations' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /artists/musicinfo:
+    get:
+      operationId: listArtistsMusicinfo
+      tags: [artists]
+      deprecated: false
+      summary: List artists with tags and description
+      description: >-
+        Returns the tags list of each artist and its description (HTML) if
+        it exists. Adds a `tag` filter (single tag only) on top of all
+        `/artists` parameters.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, joindate, popularity_total, popularity_month, popularity_week] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: hasimage
+          in: query
+          required: false
+          schema: { type: string, enum: ["true", "1"] }
+        - name: datebetween
+          in: query
+          required: false
+          schema: { type: string }
+        - name: tag
+          in: query
+          required: false
+          description: Filter by one tag; English vocabulary recommended, no synonym support.
+          schema: { type: string }
+      responses:
+        '200':
+          description: Artists with musicinfo (tags + localized description).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/ArtistMusicInfo' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /playlists:
+    get:
+      operationId: listPlaylists
+      tags: [playlists]
+      deprecated: false
+      summary: List playlists
+      description: >-
+        A playlist is a dynamic collection of tracks; the owning user can
+        modify/delete/publish/mask it at any time. `zip` is the URL for the
+        playlist's tracks as a high-quality mp3 zip — the zip may contain
+        fewer tracks than the playlist actually has (server-side ~100-track
+        internal limit). Accepts but does not require `access_token`.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, creationdate] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: user_id
+          in: query
+          required: false
+          description: One or more author id (no access_token required).
+          schema: { type: array, items: { type: integer } }
+        - name: access_token
+          in: query
+          required: false
+          description: OAuth2 access token, to scope results to a specific authenticated Jamendo user.
+          schema: { type: string }
+        - name: user_name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: datebetween
+          in: query
+          required: false
+          description: >-
+            Creation date range, both bounds required. Source doc's Type
+            column literally says "must be both integer" for this field —
+            almost certainly a copy-paste error from another page's date-range
+            param (should be yyyy-mm-dd like every other entity's
+            datebetween); confirm against the live API.
+          schema: { type: string }
+        - name: audioformat
+          in: query
+          required: false
+          description: Audio format for fileurl; only mp32 exists today.
+          schema: { type: string, enum: [mp32] }
+      responses:
+        '200':
+          description: List of playlists.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/Playlist' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /playlists/file:
+    get:
+      operationId: downloadPlaylistFile
+      tags: [playlists]
+      deprecated: false
+      summary: Download a playlist's zip file
+      description: >-
+        Exception to the normal response shape — HTTP-redirects to the
+        requested zip file URL instead of returning a document. Does not
+        inherit `playlists` parameter declarations. An invalid request
+        triggers a plain HTTP error (404 or 500), not the standard `Error`
+        JSON envelope.
+      security:
+        - apikey_auth: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: Single playlist id (redirect semantics; only one).
+          schema: { type: integer }
+        - name: audioformat
+          in: query
+          required: false
+          description: Only mp32 (mp3 192kbps) exists today.
+          schema: { type: string, enum: [mp32] }
+      responses:
+        '302':
+          description: Redirect to the zip file URL (binary redirect, not a JSON document).
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+        '404':
+          description: Playlist or file doesn't exist. Plain HTTP error, not the standard `Error` JSON envelope.
+        '500':
+          description: Malformed request. Plain HTTP error, not the standard `Error` JSON envelope.
+
+  /playlists/tracks:
+    get:
+      operationId: listPlaylistTracks
+      tags: [playlists]
+      deprecated: false
+      summary: List playlists with their tracks
+      description: >-
+        Returns playlist entities with the list of belonging tracks.
+        `track_type` selects singles, album tracks, or both — default
+        albumtrack only, since singles leave album_* fields empty. One of
+        `id`, `name`, `user_id`, `access_token`, or `user_name` is required
+        in addition to `client_id`.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [name, id, creationdate, track_id, track_name, track_added_date, track_position] }
+        - name: id
+          in: query
+          required: false
+          description: One or more playlist id. See operation description for conditional-required note.
+          schema: { type: array, items: { type: integer } }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: namesearch
+          in: query
+          required: false
+          schema: { type: string }
+        - name: user_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: access_token
+          in: query
+          required: false
+          schema: { type: string }
+        - name: user_name
+          in: query
+          required: false
+          schema: { type: string }
+        - name: datebetween
+          in: query
+          required: false
+          description: >-
+            Creation date range. Source doc's Type column says "must be
+            both integer" for this field too — same likely doc typo noted
+            on `/playlists`.
+          schema: { type: string }
+        - $ref: '#/components/parameters/AudioFormat'
+        - name: track_type
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [single, albumtrack] }
+        - $ref: '#/components/parameters/ImageSizeStandard'
+        - name: positionbetween
+          in: query
+          required: false
+          description: Filter by track position range in the playlist, both bounds required, `int_int`.
+          schema: { type: string, examples: ["1_10"] }
+        - $ref: '#/components/parameters/AudioDLFormat'
+      responses:
+        '200':
+          description: Playlists with their nested tracks.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/PlaylistWithTracks' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /radios:
+    get:
+      operationId: listRadios
+      tags: [radios]
+      deprecated: false
+      summary: List Jamendo radios
+      description: >-
+        Returns the list of existing Jamendo radios with image and name.
+        Each radio id/name can be used with `/radios/stream`. Commercial /
+        direct-indirect use requires purchasing a commercial license
+        (licensing.jamendo.com); a paid license upgrades the developer
+        account to access `type=pro` radios and provides a
+        royalty-exemption certificate.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [id, name, dispname] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: type
+          in: query
+          required: false
+          description: www = public radios (default); pro = commercial/licensed only.
+          schema: { type: string, enum: [www, pro], default: www }
+        - name: name
+          in: query
+          required: false
+          description: Radio name (unique, identifying).
+          schema: { type: string }
+        - $ref: '#/components/parameters/ImageSizeRadio'
+      responses:
+        '200':
+          description: List of radios.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/Radio' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /radios/stream:
+    get:
+      operationId: getRadioStream
+      tags: [radios]
+      deprecated: false
+      summary: Get a radio's stream URL and currently playing track
+      description: >-
+        **Documented as unreliable by Jamendo.** Per the official docs, the
+        returned stream link "is not more working, and it could be never
+        fixed" — treat the `stream` field/endpoint as possibly non-functional
+        and confirm against the live API before depending on it. Given a
+        radio id or name, returns the streaming URL, a `playingnow` object
+        describing the currently streamed track, and a `callmeback` value
+        indicating in how many ms the current track will finish and the next
+        one starts. One of `id` or `name` is required in addition to
+        `client_id`.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/FullCount'
+        - name: id
+          in: query
+          required: false
+          description: A radio id (id or name required).
+          schema: { type: integer }
+        - name: type
+          in: query
+          required: false
+          schema: { type: string, enum: [www, pro], default: www }
+        - name: name
+          in: query
+          required: false
+          description: Radio name (id or name required).
+          schema: { type: string }
+        - $ref: '#/components/parameters/ImageSizeRadio'
+        - name: track_imagesize
+          in: query
+          required: false
+          description: >-
+            Track cover px size. Source doc's parameter table was malformed
+            for this field (Type column repeats Description) — treated here
+            as the standard imagesize-style enum.
+          schema: { $ref: '#/components/schemas/ImageSizeStandardEnum' }
+      responses:
+        '200':
+          description: Radio detail with current stream/track info.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/RadioStream' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /reviews/albums:
+    get:
+      operationId: listAlbumReviews
+      tags: [reviews]
+      deprecated: false
+      summary: List album reviews
+      description: >-
+        Filters and browses album reviews. Accepts but does not require
+        `access_token`.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [addeddate, score, id] }
+        - name: id
+          in: query
+          required: false
+          description: One or more review id.
+          schema: { type: array, items: { type: integer } }
+        - name: lang
+          in: query
+          required: false
+          description: Review language, 2-letter code.
+          schema: { type: string }
+        - name: datebetween
+          in: query
+          required: false
+          schema: { type: string }
+        - name: user_id
+          in: query
+          required: false
+          description: Filter by reviewer user id.
+          schema: { type: integer }
+        - name: access_token
+          in: query
+          required: false
+          description: OAuth2 access token to scope to a specific user.
+          schema: { type: string }
+        - name: hasscore
+          in: query
+          required: false
+          description: Only reviews with/without a score.
+          schema: { type: boolean }
+        - name: album_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: artist_id
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of album reviews.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/AlbumReview' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /reviews/tracks:
+    get:
+      operationId: listTrackReviews
+      tags: [reviews]
+      deprecated: false
+      summary: List track reviews
+      description: >-
+        Filters and browses track reviews (a Jamendo.com feature since May
+        2012). Accepts but does not require `access_token`.
+        `track_audiodownload_allowed` (added Feb 2021) controls whether
+        `track_audiodownload` is populated.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [addeddate, score, id] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: lang
+          in: query
+          required: false
+          schema: { type: string }
+        - name: datebetween
+          in: query
+          required: false
+          schema: { type: string }
+        - name: user_id
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: access_token
+          in: query
+          required: false
+          schema: { type: string }
+        - name: hasscore
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: track_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: album_id
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: artist_id
+          in: query
+          required: false
+          schema: { type: integer }
+        - $ref: '#/components/parameters/AudioFormat'
+        - $ref: '#/components/parameters/AudioDLFormat'
+      responses:
+        '200':
+          description: List of track reviews.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/TrackReview' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users:
+    get:
+      operationId: getUser
+      tags: [users]
+      deprecated: false
+      summary: Look up a user
+      description: >-
+        Returns main information about a user. Deliberately a "look up"
+        (requires `id`, `access_token`, or `name`) rather than an open
+        "search", to keep light access to the user base. Source doc's
+        `order` enum is documented as empty — no valid sort values
+        currently exist for this endpoint; confirm whether the parameter
+        should be omitted entirely.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: id
+          in: query
+          required: false
+          description: One or more user id (id, access_token, or name required).
+          schema: { type: array, items: { type: integer } }
+        - name: access_token
+          in: query
+          required: false
+          schema: { type: string }
+        - name: name
+          in: query
+          required: false
+          description: One or more user names.
+          schema: { type: string }
+        - $ref: '#/components/parameters/ImageSizeUser'
+      responses:
+        '200':
+          description: User lookup result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users/artists:
+    get:
+      operationId: listUserFanArtists
+      tags: [users]
+      deprecated: false
+      summary: List artists a user is a fan of
+      description: >-
+        Given a user, returns the Jamendo artists they've become a fan of.
+        Currently `fan` is the only user-artist relation type; the
+        `relation` parameter and `relations` field are forward-looking for
+        future relation types. `updatedate` is the date the relation was
+        last established (i.e. when the user became a fan). One of `id`,
+        `access_token`, or `name` is required in addition to `client_id`.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [updatedate] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: access_token
+          in: query
+          required: false
+          schema: { type: string }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - $ref: '#/components/parameters/ImageSizeUser'
+        - name: artist_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: relation
+          in: query
+          required: false
+          description: Relation type filter; only `fan` exists today.
+          schema:
+            type: array
+            items: { type: string, enum: [fan] }
+            default: [fan]
+      responses:
+        '200':
+          description: User with the artists they're a fan of.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/UserWithArtists' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users/albums:
+    get:
+      operationId: listUserMyAlbums
+      tags: [users]
+      deprecated: false
+      summary: List albums a user has added to "myalbums"
+      description: >-
+        Given a user, returns Jamendo albums added to their "myalbums"
+        collection. Currently `myalbums` is the only user-album relation
+        type; `relation` and `relations` are forward-looking. `updatedate`
+        is the date the album was added to myalbums. One of `id`,
+        `access_token`, or `name` is required in addition to `client_id`.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [updatedate] }
+        - name: id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: access_token
+          in: query
+          required: false
+          schema: { type: string }
+        - name: name
+          in: query
+          required: false
+          schema: { type: string }
+        - $ref: '#/components/parameters/ImageSizeUser'
+        - name: album_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - $ref: '#/components/parameters/ImageSizeStandardParamAlbum'
+        - name: relation
+          in: query
+          required: false
+          description: Relation type filter; only `myalbums` exists today.
+          schema:
+            type: array
+            items: { type: string, enum: [myalbums] }
+            default: [myalbums]
+      responses:
+        '200':
+          description: User with their myalbums.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/UserWithAlbums' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users/tracks:
+    get:
+      operationId: listUserTracks
+      tags: [users]
+      deprecated: false
+      summary: List tracks a user has liked, favorited, or reviewed
+      description: >-
+        Given a user, returns Jamendo tracks they've liked, added to
+        favorite, and/or reviewed. `relation` filters which of these to
+        include (default all; "favorite+like" means OR, not AND).
+        `order=rating_desc` sorts by an aggregated rating (review score,
+        with like=8 and favorite=9 as implicit review scores).
+        `order=updatedate` sorts by the latest of like/favorite/review
+        action, exposed on each track as `dateupdated`. `track_type`
+        selects singles, album tracks, or both (default albumtrack only).
+        One of `id` or `access_token` is required in addition to
+        `client_id`.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          description: rating = aggregated review/like/favorite score.
+          schema:
+            type: array
+            items: { type: string, enum: [updatedate, rating] }
+        - name: id
+          in: query
+          required: false
+          description: One user id.
+          schema: { type: integer }
+        - name: access_token
+          in: query
+          required: false
+          schema: { type: string }
+        - $ref: '#/components/parameters/ImageSizeUser'
+        - name: track_type
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [single, albumtrack] }
+        - name: track_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: artist_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - name: album_id
+          in: query
+          required: false
+          schema: { type: array, items: { type: integer } }
+        - $ref: '#/components/parameters/AudioFormat'
+        - $ref: '#/components/parameters/AudioDLFormat'
+        - $ref: '#/components/parameters/ImageSizeStandardParamAlbum'
+        - name: relation
+          in: query
+          required: false
+          description: '"favorite+like" means OR, not AND.'
+          schema:
+            type: array
+            items: { type: string, enum: [like, favorite, review] }
+      responses:
+        '200':
+          description: User with the tracks they've liked/favorited/reviewed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/UserWithTracks' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /feeds:
+    get:
+      operationId: listFeeds
+      tags: [feeds]
+      deprecated: false
+      summary: List editorial feeds
+      description: >-
+        Returns the editorial feeds shown on the jamendo.com homepage. Every
+        feed has a start/end date; only active feeds are returned. Every
+        feed includes image URLs at 4 fixed sizes (996x350, 315x111,
+        600x211, 470x165). Default and recommended order is
+        `position_asc`.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/FullCount'
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: array
+            items: { type: string, enum: [id, date_start, date_end, position] }
+            default: [position_asc]
+        - name: id
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: lang
+          in: query
+          required: false
+          description: Filter to feeds with text in this language (other-language text still returned in the document).
+          schema: { type: string, enum: [en, fr, es, de, pl, it, ru, pt] }
+        - name: target
+          in: query
+          required: false
+          description: Audience filter; logged/notlogged not mutually exclusive.
+          schema: { type: string, enum: [all, logged, notlogged], default: all }
+        - name: type
+          in: query
+          required: false
+          description: Feed type; album/track/artist/playlist types populate `joinid` with the related entity's id.
+          schema:
+            type: array
+            items: { type: string, enum: [album, artist, playlist, track, news, interview, contest, video, update] }
+      responses:
+        '200':
+          description: List of editorial feeds.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/Feed' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /autocomplete:
+    get:
+      operationId: autocomplete
+      tags: [autocomplete]
+      deprecated: false
+      summary: Autocomplete tracks, albums, artists, and tags by name prefix
+      description: >-
+        Builds an autocomplete over Jamendo tracks, albums, artists, and
+        tags. By default searches all four entities; narrow with `entity`.
+        `prefix` is matched as a name prefix (SQL `WHERE name LIKE
+        'prefix%' GROUP BY entity, name ORDER BY name, COUNT(*) DESC`),
+        minimum length 2. No entity id is returned — a follow-up lookup
+        must go by name, which is not unique. **Non-standard response
+        shape**: `results` is an object keyed by entity, not the usual
+        array envelope used by every other read endpoint.
+      security:
+        - apikey_auth: []
+      parameters:
+        - $ref: '#/components/parameters/Format'
+        - $ref: '#/components/parameters/Callback'
+        - name: limit
+          in: query
+          required: false
+          description: Results per entity.
+          schema: { type: string }
+        - $ref: '#/components/parameters/FullCount'
+        - name: prefix
+          in: query
+          required: true
+          description: Name prefix to search, min length 2.
+          schema: { type: string, minLength: 2 }
+        - name: entity
+          in: query
+          required: false
+          description: Which entities to search; default all four.
+          schema:
+            type: array
+            items: { type: string, enum: [artists, albums, tracks, tags] }
+        - name: matchcount
+          in: query
+          required: false
+          description: Include match count per result; tags matchcount reflects tracks only, not albums/artists.
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: >-
+            Autocomplete matches keyed by entity. Only requested entities
+            present if the `entity` filter was used.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results: { $ref: '#/components/schemas/AutocompleteResults' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /setuser/fan:
+    post:
+      operationId: setUserFan
+      tags: [setuser]
+      deprecated: false
+      summary: Mark the authenticated user as a fan of an artist
+      description: >-
+        Makes the user identified by `access_token` a fan of the artist
+        identified by `artist_id` (surfaces via `/users/artists?relation=fan`).
+        If the artist doesn't exist, no error is raised — the artist simply
+        never appears in read requests. Source doc's example uses
+        `curl -X POST -d ...` (form-encoded POST body), not query-string
+        params, despite the shared parameter table style used across these
+        docs — confirm whether params are strictly required as
+        `application/x-www-form-urlencoded` body vs also accepted as query
+        string.
+      security:
+        - oauth2: [music]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [client_id, access_token, artist_id]
+              properties:
+                client_id: { type: string, description: App client id. }
+                format: { type: string, enum: [xml, json, jsonpretty], default: json }
+                fullcount: { type: boolean, default: false }
+                access_token: { type: string, description: OAuth2 access token with `music` scope, for the user being updated. }
+                artist_id: { type: integer, description: Artist to become a fan of. }
+      responses:
+        '200':
+          description: Success. Empty `results` — the response only confirms via `headers.status`/`code`.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results: { type: array, items: {} }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /setuser/favorite:
+    post:
+      operationId: setUserFavorite
+      tags: [setuser]
+      deprecated: false
+      summary: Add a track to the authenticated user's favorites
+      description: >-
+        Adds the given track to the user's favorites (Jamendo.com's
+        "Favorites" playlist; surfaces via
+        `/users/tracks?relation=favorite` — source docs typo this as
+        "preferite"). If the track doesn't exist, no error is raised — it
+        simply never appears in read requests. Same POST-body-vs-query-string
+        ambiguity noted on `/setuser/fan`.
+      security:
+        - oauth2: [music]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [client_id, access_token, track_id]
+              properties:
+                client_id: { type: string, description: App client id. }
+                format: { type: string, enum: [xml, json, jsonpretty], default: json }
+                fullcount: { type: boolean, default: false }
+                access_token: { type: string, description: OAuth2 access token with `music` scope. }
+                track_id: { type: integer, description: Track to add to favorites. }
+      responses:
+        '200':
+          description: Success. Empty `results` on success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results: { type: array, items: {} }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /setuser/like:
+    post:
+      operationId: setUserLike
+      tags: [setuser]
+      deprecated: false
+      summary: Like a track as the authenticated user
+      description: >-
+        Makes the authenticated user like the given track (surfaces via
+        `/users/tracks?relation=like`). If the track doesn't exist, no
+        error is raised — it simply never appears in read requests. Same
+        POST-body-vs-query-string ambiguity noted on `/setuser/fan`.
+      security:
+        - oauth2: [music]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [client_id, access_token, track_id]
+              properties:
+                client_id: { type: string, description: App client id. }
+                format: { type: string, enum: [xml, json, jsonpretty], default: json }
+                fullcount: { type: boolean, default: false }
+                access_token: { type: string, description: OAuth2 access token with `music` scope. }
+                track_id: { type: integer, description: Track to like. }
+      responses:
+        '200':
+          description: Success. Empty `results` on success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results: { type: array, items: {} }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /setuser/dislike:
+    post:
+      operationId: setUserDislike
+      tags: [setuser]
+      deprecated: false
+      summary: Dislike a track as the authenticated user
+      description: >-
+        Counterpart to `/setuser/like` — lets the authenticated user
+        dislike a track, similar to like/dislike patterns on other social
+        platforms. Unlike `like`'s read-side exposure
+        (`/users/tracks?relation=like`), no corresponding `dislike`
+        relation is documented on `/users/tracks` — whether disliked tracks
+        are queryable anywhere, or whether this is write-only with no read
+        surface, is unconfirmed. Same POST-body-vs-query-string ambiguity
+        noted on `/setuser/fan`.
+      security:
+        - oauth2: [music]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [client_id, access_token, track_id]
+              properties:
+                client_id: { type: string, description: App client id. }
+                format: { type: string, enum: [xml, json, jsonpretty], default: json }
+                fullcount: { type: boolean, default: false }
+                access_token: { type: string, description: OAuth2 access token with `music` scope. }
+                track_id: { type: integer, description: Track to dislike. }
+      responses:
+        '200':
+          description: Success. Empty `results` on success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results: { type: array, items: {} }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /setuser/myalbum:
+    post:
+      operationId: setUserMyAlbum
+      tags: [setuser]
+      deprecated: false
+      summary: Add an album to the authenticated user's "myalbums"
+      description: >-
+        Every user has a "myalbums" favorite-albums list. Adds the given
+        album to that list (surfaces via `/users/albums?relation=myalbums`).
+        No remove/undo endpoint is documented for any `setuser/*` write
+        method (fan, favorite, like, dislike, myalbum) — whether removal is
+        possible via this API, or only through the Jamendo website UI, is
+        unconfirmed. Same POST-body-vs-query-string ambiguity noted on
+        `/setuser/fan`.
+      security:
+        - oauth2: [music]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [client_id, access_token, album_id]
+              properties:
+                client_id: { type: string, description: App client id. }
+                format: { type: string, enum: [xml, json, jsonpretty], default: json }
+                fullcount: { type: boolean, default: false }
+                access_token: { type: string, description: OAuth2 access token with `music` scope. }
+                album_id: { type: integer, description: Album to add to myalbums. }
+      responses:
+        '200':
+          description: Success. Empty `results` on success.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  headers: { $ref: '#/components/schemas/Headers' }
+                  results: { type: array, items: {} }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    apikey_auth:
+      type: apiKey
+      in: query
+      name: client_id
+      description: >-
+        Every API call requires a `client_id` query parameter. Get one by
+        signing up at https://devportal.jamendo.com/ and creating an
+        application. Public test client_id for read-only testing: `709fa152`
+        (testing only).
+    oauth2:
+      type: oauth2
+      description: >-
+        Standard OAuth2 Authorization Code Grant flow (IETF draft #31).
+        Access token is valid 2 hours; refresh via `grant_type=refresh_token`.
+        Note: Jamendo's write methods pass `access_token` as a normal
+        POST-body/query parameter rather than an `Authorization: Bearer`
+        header — see each `setuser/*` operation's requestBody.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://api.jamendo.com/v3.0/oauth/authorize
+          tokenUrl: https://api.jamendo.com/v3.0/oauth/grant
+          scopes:
+            music: "Write a user's music properties (playlists, favorite tracks/artists/albums)."
+
+  parameters:
+    Format:
+      name: format
+      in: query
+      required: false
+      description: Response format.
+      schema: { type: string, enum: [xml, json, jsonpretty], default: json }
+    Callback:
+      name: callback
+      in: query
+      required: false
+      description: JSONP callback wrapper (json + GET only).
+      schema: { type: string }
+    Offset:
+      name: offset
+      in: query
+      required: false
+      description: Pagination offset.
+      schema: { type: integer, minimum: 0 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Page size, max 200, or "all" (capped 200).
+      schema: { type: string, default: "10" }
+    FullCount:
+      name: fullcount
+      in: query
+      required: false
+      description: Adds `results_fullcount` to headers.
+      schema: { type: boolean, default: false }
+    AudioFormat:
+      name: audioformat
+      in: query
+      required: false
+      description: Audio format for the `audio` field.
+      schema: { type: string, enum: [mp31, mp32, ogg, flac], default: mp31 }
+    AudioDLFormat:
+      name: audiodlformat
+      in: query
+      required: false
+      description: Audio download format for `audiodownload`. Defaults to `audioformat`'s value, or mp32.
+      schema: { type: string, enum: [mp31, mp32, ogg, flac] }
+    ImageSizeStandard:
+      name: imagesize
+      in: query
+      required: false
+      description: Cover px size.
+      schema: { $ref: '#/components/schemas/ImageSizeStandardEnum' }
+    ImageSizeStandardParamAlbum:
+      name: album_imagesize
+      in: query
+      required: false
+      description: Album cover px size.
+      schema: { $ref: '#/components/schemas/ImageSizeStandardEnum' }
+    ImageSizeUser:
+      name: imagesize
+      in: query
+      required: false
+      description: User avatar px size.
+      schema: { type: integer, enum: [30, 50, 100] }
+    ImageSizeRadio:
+      name: imagesize
+      in: query
+      required: false
+      description: Radio image px size.
+      schema: { type: integer, enum: [150, 30] }
+
+  responses:
+    BadRequest:
+      description: >-
+        Parameter type/range/format error, or a missing required parameter.
+        See `docs/02-response-codes.md` — most API-level errors are actually
+        returned as HTTP 200 with `headers.status: "failed"`; confirm this
+        response's real HTTP status against the live API.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Invalid or expired access token / client_id.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Insufficient scope, or suspended application.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Entity/subentity path doesn't exist.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: App or IP exceeded permitted rate limit.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Generic unidentified error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    ImageSizeStandardEnum:
+      type: integer
+      enum: [25, 35, 50, 55, 60, 65, 70, 75, 85, 100, 130, 150, 200, 300, 400, 500, 600]
+
+    Headers:
+      type: object
+      description: Envelope header present in every response document.
+      properties:
+        status:
+          type: string
+          enum: [success, failed]
+        code:
+          type: integer
+          description: 0 on success, non-zero error id on failure. See `docs/02-response-codes.md` for the full error code table.
+        error_message:
+          type: string
+          description: Error type + contextual description, empty on success.
+        warnings:
+          type: string
+          description: Warning messages if any; warnings do not fail the request.
+        results_count:
+          type: integer
+          description: Number of items in `results` for this page.
+        results_fullcount:
+          type: integer
+          description: Total matching result count across all pages; only present when `fullcount=true` was requested.
+      required: [status, code, error_message, warnings]
+
+    Error:
+      type: object
+      description: Shared error envelope used by all endpoints' 4xx/5xx responses.
+      properties:
+        headers:
+          type: object
+          properties:
+            status: { type: string, enum: [success, failed] }
+            code: { type: integer }
+            error_message: { type: string }
+            warnings: { type: string }
+        results:
+          type: array
+          items: {}
+
+    MusicInfoTags:
+      type: object
+      properties:
+        genres: { type: array, items: { type: string } }
+        instruments: { type: array, items: { type: string } }
+        vartags: { type: array, items: { type: string } }
+
+    MusicInfo:
+      type: object
+      description: Present on tracks only when `include=musicinfo` is requested.
+      properties:
+        vocalinstrumental: { type: string, enum: [vocal, instrumental, ""] }
+        lang: { type: string, description: Lyrics language 2-letter code, empty if not applicable. }
+        gender: { type: string, enum: [male, female, ""] }
+        acousticelectric: { type: string, enum: [acoustic, electric, ""] }
+        speed: { type: string, enum: [verylow, low, medium, high, veryhigh, ""] }
+        tags: { $ref: '#/components/schemas/MusicInfoTags' }
+
+    Waveform:
+      type: object
+      description: >-
+        Large numeric array (hundreds of values per track); full fidelity
+        not needed for consumers, modeled as a plain array of integers.
+      properties:
+        peaks:
+          type: array
+          items: { type: integer }
+
+    Track:
+      type: object
+      description: >-
+        Fields present depend on `include`; `musicinfo` is only present
+        when `include=musicinfo` was requested.
+      properties:
+        id: { type: string }
+        name: { type: string }
+        duration: { type: integer, description: Seconds. }
+        artist_id: { type: string }
+        artist_name: { type: string }
+        artist_idstr: { type: string }
+        album_name: { type: string, description: Empty for singles (tracks with no album). }
+        album_id: { type: string, description: Empty for singles (tracks with no album). }
+        license_ccurl: { type: string, format: uri }
+        position: { type: integer, description: Track position within its album; not meaningful for singles. }
+        releasedate: { type: string, format: date }
+        album_image: { type: string, format: uri }
+        audio: { type: string, format: uri }
+        audiodownload:
+          type: string
+          format: uri
+          description: Becomes an empty string when `audiodownload_allowed` is false (since Aug 2020).
+        prourl: { type: string }
+        shorturl: { type: string, format: uri }
+        shareurl: { type: string, format: uri }
+        waveform: { $ref: '#/components/schemas/Waveform' }
+        image: { type: string, format: uri }
+        audiodownload_allowed: { type: boolean }
+        content_id_free: { type: boolean }
+        musicinfo: { $ref: '#/components/schemas/MusicInfo' }
+
+    TrackWithScore:
+      allOf:
+        - $ref: '#/components/schemas/Track'
+        - type: object
+          properties:
+            score: { type: number, maximum: 1, description: Similarity relevance score. }
+
+    AlbumTrackItem:
+      type: object
+      description: A track nested under an album (`/albums/tracks`, same shape reused by `/playlists/tracks`).
+      properties:
+        count: { type: string }
+        id: { type: string }
+        position: { type: string }
+        name: { type: string }
+        duration: { type: string }
+        license_ccurl: { type: string, format: uri }
+        audio: { type: string, format: uri }
+        audiodownload: { type: string, format: uri, description: Empty string when `audiodownload_allowed` is false. }
+        audiodownload_allowed: { type: boolean }
+
+    ArtistTrackItem:
+      type: object
+      description: A track nested under an artist (`/artists/tracks`).
+      properties:
+        album_id: { type: string, description: Empty for singles (tracks with no album). }
+        album_name: { type: string, description: Empty for singles (tracks with no album). }
+        id: { type: string }
+        name: { type: string }
+        duration: { type: string }
+        releasedate: { type: string, format: date }
+        license_ccurl: { type: string, format: uri }
+        album_image: { type: string, format: uri, description: Empty for singles (tracks with no album). }
+        image: { type: string, format: uri }
+        audio: { type: string, format: uri }
+        audiodownload: { type: string, format: uri, description: Empty string when `audiodownload_allowed` is false. }
+        audiodownload_allowed: { type: boolean }
+
+    PlaylistTrackItem:
+      allOf:
+        - $ref: '#/components/schemas/AlbumTrackItem'
+
+    Album:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        releasedate: { type: string, format: date }
+        artist_id: { type: string }
+        artist_name: { type: string }
+        image: { type: string, format: uri }
+        zip: { type: string, format: uri, description: Empty string when `zip_allowed` is false (since Apr 2022). }
+        zip_allowed: { type: boolean }
+        shorturl: { type: string, format: uri }
+        shareurl: { type: string, format: uri }
+
+    AlbumWithTracks:
+      allOf:
+        - $ref: '#/components/schemas/Album'
+        - type: object
+          properties:
+            tracks:
+              type: array
+              items: { $ref: '#/components/schemas/AlbumTrackItem' }
+
+    LocalizedText:
+      type: object
+      description: Per-language text; may contain raw HTML. Absent languages default to an empty string.
+      properties:
+        en: { type: string }
+        fr: { type: string }
+        es: { type: string }
+        de: { type: string }
+        pl: { type: string }
+        it: { type: string }
+        ru: { type: string }
+        pt: { type: string }
+        ja: { type: string }
+
+    AlbumMusicInfo:
+      allOf:
+        - $ref: '#/components/schemas/Album'
+        - type: object
+          properties:
+            musicinfo:
+              type: object
+              properties:
+                tags:
+                  type: array
+                  items: { type: string }
+                  description: >-
+                    Live examples show heavy duplication (same tag repeated
+                    per matched sub-attribute) — confirm actual dedup
+                    behavior against the live API.
+                description: { $ref: '#/components/schemas/LocalizedText' }
+
+    Artist:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        website: { type: string, description: Empty string if not set. }
+        joindate: { type: string, format: date }
+        image: { type: string, format: uri }
+        shorturl: { type: string, format: uri }
+        shareurl: { type: string, format: uri }
+
+    ArtistWithTracks:
+      allOf:
+        - $ref: '#/components/schemas/Artist'
+        - type: object
+          properties:
+            tracks:
+              type: array
+              items: { $ref: '#/components/schemas/ArtistTrackItem' }
+
+    ArtistAlbumItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        releasedate: { type: string, format: date }
+        image: { type: string, format: uri }
+
+    ArtistWithAlbums:
+      allOf:
+        - $ref: '#/components/schemas/Artist'
+        - type: object
+          properties:
+            albums:
+              type: array
+              items: { $ref: '#/components/schemas/ArtistAlbumItem' }
+
+    ArtistLocation:
+      type: object
+      properties:
+        id: { type: string }
+        longitude: { type: string }
+        latitude: { type: string }
+        country: { type: string, description: ISO 3166-1 alpha-3 code. }
+        city: { type: string }
+
+    ArtistWithLocations:
+      allOf:
+        - $ref: '#/components/schemas/Artist'
+        - type: object
+          properties:
+            locations:
+              type: array
+              items: { $ref: '#/components/schemas/ArtistLocation' }
+
+    ArtistMusicInfo:
+      allOf:
+        - $ref: '#/components/schemas/Artist'
+        - type: object
+          properties:
+            musicinfo:
+              type: object
+              properties:
+                tags: { type: array, items: { type: string } }
+                description: { $ref: '#/components/schemas/LocalizedText' }
+
+    Playlist:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        creationdate: { type: string, format: date }
+        user_id: { type: string }
+        user_name: { type: string }
+        zip: { type: string, format: uri, description: 'May contain fewer tracks than the playlist actually has (server-side ~100-track internal limit).' }
+        shorturl: { type: string, format: uri }
+        shareurl: { type: string, format: uri }
+
+    PlaylistWithTracks:
+      allOf:
+        - $ref: '#/components/schemas/Playlist'
+        - type: object
+          properties:
+            tracks:
+              type: array
+              items: { $ref: '#/components/schemas/PlaylistTrackItem' }
+
+    Radio:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        dispname: { type: string }
+        type: { type: string, enum: [www, pro] }
+        image: { type: string, format: uri }
+
+    RadioPlayingNow:
+      type: object
+      properties:
+        track_id: { type: integer, description: 0 when nothing is currently playing. }
+        artist_id: { type: integer }
+        album_id: { type: integer }
+        album_name: { type: string }
+        track_name: { type: string }
+        track_image: { type: string, format: uri }
+        artist_name: { type: string }
+
+    RadioStream:
+      allOf:
+        - $ref: '#/components/schemas/Radio'
+        - type: object
+          properties:
+            stream:
+              type: string
+              format: uri
+              description: >-
+                Per official Jamendo docs this stream link is documented as
+                broken and may never be fixed — treat as unreliable.
+            playingnow: { $ref: '#/components/schemas/RadioPlayingNow' }
+            callmeback:
+              type: string
+              description: Milliseconds until the current track finishes and the next starts; empty string when not applicable.
+
+    AlbumReview:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        text: { type: string }
+        dateadded: { type: string, format: date }
+        agreecnt: { type: string }
+        lang: { type: string }
+        user_id: { type: string }
+        user_name: { type: string }
+        user_dispname: { type: string }
+        score: { type: string }
+        album_id: { type: string }
+        album_name: { type: string }
+        artist_id: { type: string }
+
+    TrackReview:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        text: { type: string }
+        dateadded: { type: string, format: date }
+        agreecnt: { type: string }
+        lang: { type: string }
+        user_id: { type: string }
+        user_name: { type: string, description: 'Live examples show values that look like real email addresses — treat as potentially PII.' }
+        user_dispname: { type: string }
+        score: { type: string }
+        track_id: { type: string }
+        track_name: { type: string }
+        album_id: { type: string }
+        artist_id: { type: string }
+        track_audiodownload_allowed: { type: boolean }
+        track_license_ccurl: { type: string, format: uri }
+        track_audio: { type: string, format: uri }
+        track_audiodownload: { type: string, format: uri, description: Empty string when `track_audiodownload_allowed` is false. }
+
+    User:
+      type: object
+      properties:
+        name: { type: string }
+        dispname: { type: string }
+        id: { type: string }
+        lang: { type: string }
+        creationdate: { type: string, format: date }
+        image: { type: string, format: uri }
+
+    UserArtistItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        image: { type: string, format: uri }
+        joindate: { type: string, format: date }
+        updatedate: { type: string, description: 'Date-time the fan relation was established, e.g. "2013-09-09 12:01:44".' }
+        relations:
+          type: object
+          properties:
+            fan: { type: string }
+
+    UserWithArtists:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            artists:
+              type: array
+              items: { $ref: '#/components/schemas/UserArtistItem' }
+
+    UserAlbumItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        releasedate: { type: string, format: date }
+        artist_id: { type: string }
+        artist_name: { type: string }
+        updatedate: { type: string, description: Date-time the album was added to myalbums. }
+        image: { type: string, format: uri }
+        relations:
+          type: object
+          properties:
+            myalbums: { type: string }
+
+    UserWithAlbums:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            albums:
+              type: array
+              items: { $ref: '#/components/schemas/UserAlbumItem' }
+
+    UserTrackItem:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        releasedate: { type: string, format: date }
+        artist_id: { type: string }
+        duration: { type: string }
+        artist_name: { type: string }
+        license_ccurl: { type: string, format: uri }
+        updatedate: { type: string, description: Date-time of the latest like/favorite/review action. }
+        album_image: { type: string, format: uri }
+        image: { type: string, format: uri }
+        audio: { type: string, format: uri }
+        audiodownload: { type: string, format: uri, description: Empty string when `audiodownload_allowed` is false. }
+        relations:
+          type: object
+          description: Numeric scores; review is the review score (1-10), favorite/like are implicit scores (9/8) when set.
+          properties:
+            review: { type: string }
+            favorite: { type: string }
+            like: { type: string }
+        audiodownload_allowed: { type: boolean }
+
+    UserWithTracks:
+      type: object
+      description: >-
+        This endpoint's user object uses `avatar_type`/`avatar` instead of
+        `image`, per the source docs' documented field list.
+      properties:
+        name: { type: string }
+        dispname: { type: string }
+        id: { type: string }
+        lang: { type: string }
+        creationdate: { type: string, format: date }
+        avatar_type: { type: string }
+        avatar: { type: string, description: 'File extension of the avatar image, e.g. "jpg".' }
+        tracks:
+          type: array
+          items: { $ref: '#/components/schemas/UserTrackItem' }
+
+    FeedImages:
+      type: object
+      properties:
+        size996_350: { type: string, format: uri }
+        size315_111: { type: string, format: uri }
+        size600_211: { type: string, format: uri }
+        size470_165: { type: string, format: uri }
+
+    Feed:
+      type: object
+      properties:
+        id: { type: string }
+        title: { $ref: '#/components/schemas/LocalizedText' }
+        link: { type: string, format: uri }
+        position: { type: string }
+        lang: { type: array, items: { type: string }, description: Language codes this feed is translated into. }
+        date_start: { type: string }
+        date_end: { type: string }
+        text: { $ref: '#/components/schemas/LocalizedText' }
+        type: { type: string, enum: [album, artist, playlist, track, news, interview, contest, video, update] }
+        joinid: { type: string, description: Related entity's id when `type` is album/track/artist/playlist; "0" otherwise. }
+        subtitle: { type: array, items: { type: string } }
+        target: { type: string, enum: [all, logged, notlogged] }
+        images: { $ref: '#/components/schemas/FeedImages' }
+
+    AutocompleteMatch:
+      type: object
+      properties:
+        match: { type: string }
+        count:
+          type: integer
+          description: Only present when `matchcount=true` was requested.
+
+    AutocompleteResults:
+      type: object
+      description: >-
+        Non-standard shape — keyed by entity, not an array. Only requested
+        entities present if the `entity` filter was used.
+      properties:
+        tags:
+          type: array
+          items: { $ref: '#/components/schemas/AutocompleteMatch' }
+          description: matchcount for tags reflects tracks only, not albums/artists.
+        artists:
+          type: array
+          items: { $ref: '#/components/schemas/AutocompleteMatch' }
+        tracks:
+          type: array
+          items: { $ref: '#/components/schemas/AutocompleteMatch' }
+        albums:
+          type: array
+          items: { $ref: '#/components/schemas/AutocompleteMatch' }
