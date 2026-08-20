@@ -3,6 +3,7 @@ import { type ClientConfig, resolveConfig } from './config';
 import { createCache } from './core/cache';
 import { createFetcher } from './core/fetcher';
 import { createRateLimiter } from './core/rateLimit';
+import { createRedirectFetcher, type RedirectResult } from './core/redirect';
 import { type ApiResult, createRequest, type RequestFn, type RequestOptions } from './core/request';
 import { type AlbumsApi, albums } from './endpoints/albums';
 import { type ArtistsApi, artists } from './endpoints/artists';
@@ -26,6 +27,13 @@ export interface Client {
         params: Record<string, unknown>,
         options: RequestOptions<T, R> & { resultsSchema: z.ZodType<R> }
     ): Promise<ApiResult<T, R>>;
+    /**
+     * Fetch a 302 binary-redirect endpoint (`/tracks/file`, `/albums/file`,
+     * `/playlists/file`). Bypasses the envelope/cache/retry chain — returns
+     * the file URL from the `Location` header. Throws {@link JamendoHttpError}
+     * on 404/500.
+     */
+    requestRedirect(method: 'GET', path: string, params: Record<string, unknown>): Promise<RedirectResult>;
     albums: AlbumsApi;
     artists: ArtistsApi;
     autocomplete: AutocompleteApi;
@@ -47,8 +55,10 @@ export function createJamendoClient(config: ClientConfig): Client {
     const cache = createCache(resolved);
     const { run } = createRateLimiter(resolved);
     const request: RequestFn = createRequest(fetcher, cache, run);
+    const requestRedirect = createRedirectFetcher(resolved);
     return {
         request,
+        requestRedirect,
         albums: albums(request),
         artists: artists(request),
         autocomplete: autocomplete(request),
