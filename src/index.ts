@@ -10,6 +10,8 @@ export type { Client } from './client';
 // Client + config
 export { createJamendoClient } from './client';
 export type { CacheConfig, ClientConfig, RateLimitConfig, RateLimitInfo, ResolvedConfig } from './config';
+// Redirect fetch result (302 file/stream endpoints)
+export type { RedirectResult } from './core/redirect';
 // Request result + errors
 export type { ApiResult, RequestOptions } from './core/request';
 // Albums resource (types only — schemas stay internal)
@@ -32,6 +34,7 @@ export {
     errorForCode,
     JamendoError,
     JamendoErrorCode,
+    JamendoHttpError,
     JamendoRateLimit,
     JamendoSchemaError,
 } from './errors';

@@ -104,6 +104,22 @@ export class JamendoSchemaError extends JamendoError {
     }
 }
 
+/**
+ * HTTP-level error for the file/stream redirect endpoints (`/tracks/file`,
+ * `/albums/file`, `/playlists/file`). These return a 302 redirect instead of
+ * the JSON envelope; 404/500 are plain HTTP errors, not envelope failures.
+ * Carries the HTTP `status` (there is no envelope `code`).
+ */
+export class JamendoHttpError extends JamendoError {
+    readonly status: number;
+
+    constructor(status: number, message?: string) {
+        super({ code: -1, message: message ?? `Jamendo HTTP error ${status}` });
+        this.name = 'JamendoHttpError';
+        this.status = status;
+    }
+}
+
 /** Map an envelope error code to the right thrown error. Code 6 → JamendoRateLimit. */
 export function errorForCode(code: number, message: string, warnings = '', opId?: string): JamendoError {
     if (code === JamendoErrorCode.RateLimitExceeded) {
