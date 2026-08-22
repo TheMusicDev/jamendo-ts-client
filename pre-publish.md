@@ -46,12 +46,16 @@ rest are open. Last updated 2026-08-22.
 
 - [x] **Release workflow.** Added `.github/workflows/release.yml`. Fires on
       `git push --tags v*` → builds, typechecks, tests, then
-      `npm publish --provenance --access public`. Needs an `NPM_TOKEN`
-      secret (granular publish token for `@themusicdev/jamendo-ts-client`)
-      and `id-token: write` for provenance. Version bump is manual:
-      bump `package.json` `version`, commit, tag, push the tag. The workflow
-      does NOT bump — it publishes whatever version is in `package.json`
-      at the tagged commit. See "Triggering a release" below.
+      `npm publish --access public` via **Trusted Publishing (OIDC)** — no
+      `NPM_TOKEN` secret. `id-token: write` lets GitHub mint a short-lived
+      OIDC token the npm CLI exchanges for a one-time publish credential.
+      Provenance is automatic (no `--provenance` flag). Uses `setup-node`
+      (Node 24, npm latest) for the publish step because the OIDC exchange
+      needs npm CLI v11.5.1+; Bun builds/tests, Node publishes. Version bump
+      is manual: bump `package.json` `version`, commit, tag, push the tag.
+      The workflow does NOT bump — it publishes whatever version is in
+      `package.json` at the tagged commit. See "Trusted Publishing setup"
+      + "Triggering a release" below.
 - [x] **`npm pack --dry-run` CI job.** Added a `pack` job to
       `.github/workflows/ci_check.yml` that builds, runs
       `npm pack --dry-run --json`, and asserts every packed path is under
@@ -69,7 +73,44 @@ rest are open. Last updated 2026-08-22.
       registry installs). Low risk; leave unless git installs need
       guarding.
 
-## Triggering a release (release.yml)
+## Trusted Publishing setup (one-time, after first publish)
+
+npm Trusted Publishing (OIDC) needs the package to **already exist** — the
+trusted-publisher config lives on the package's npmjs.com settings page,
+which only appears after the first publish. So the first version is manual,
+then OIDC takes over. (npm has no "pending publisher" flow for new packages
+yet — tracked in npm/cli#8544.)
+
+1. **First publish (manual, one-time).** From a machine logged into the
+   `@themusicdev` org member account:
+   ```sh
+   npm whoami                         # confirm membership
+   bun run build                      # build dist/
+   npm publish --access public        # 2FA prompt; creates the package
+   ```
+   This creates `@themusicdev/jamendo-ts-client` on npm. It ships WITHOUT
+   provenance (manual publish) — that's fine for the bootstrap version.
+
+2. **Configure the trusted publisher on npmjs.com.** Open
+   https://www.npmjs.com/package/@themusicdev/jamendo-ts-client →
+   Settings → Trusted Publisher → add a GitHub Actions publisher:
+   - Organization/user: `TheMusicDev`
+   - Repository: `jamendo-ts-client`
+   - Workflow filename: `release.yml` (filename only, not the path)
+   - Environment: `release` (matches the `environment:` in release.yml;
+     leave blank there too if you skip the environment)
+
+3. **Harden.** Same page → Publishing access → **"Require 2FA and disallow
+   tokens"**. This kills all token-based publishing; only OIDC works from
+   here on.
+
+4. **Add the `release` environment (optional).** Repo settings →
+   Environments → New environment `release`. Add required reviewers / branch
+   restrictions if you want a human gate before publish. Skip if unused —
+   then also remove `environment: release` from release.yml (or leave it;
+   a missing environment is just not enforced).
+
+## Triggering a release (release.yml, after trusted publisher is set)
 
 `release.yml` publishes to npm automatically when a `v*` tag is pushed.
 It does **not** bump the version — you own the version number in
@@ -85,23 +126,17 @@ git tag v0.1.1
 git push && git push --tags
 ```
 
-Prerequisites (one-time):
-- Repo secret `NPM_TOKEN` set (granular publish token for
-  `@themusicdev/jamendo-ts-client`). Add at
-  https://github.com/TheMusicDev/jamendo-ts-client/settings/secrets/actions.
-- The token's npm account is a member of `@themusicdev` with publish rights.
-- `npm whoami` on the publish machine confirms membership before first
-  release.
-
 After the run:
 - npmjs.com shows the new version with a green **Provenance** badge (links
-  the tarball to the exact commit).
+  the tarball to the exact commit) — automatic, no flag needed.
 - GitHub Releases page reflects the tag.
 
-Manual fallback (no provenance):
-```sh
-npm publish --access public
-```
+Common pitfalls:
+- **E404** → trusted publisher config mismatch (org/repo/workflow/env must
+  match release.yml exactly, case-sensitive).
+- **Legacy token path used** → a `NODE_AUTH_TOKEN` env is set somewhere;
+  remove it (release.yml does not set one — do not add it).
+- `package.json` `repository.url` must exactly match the GitHub repo.
 
 ## Recommended publish order
 
@@ -112,8 +147,15 @@ npm publish --access public
 4. Open a PR for `chore/pre-publish-cleanup` (this branch), review, merge.
    The CI branch (`ci/setup-pr-agent-and-checks`) is already in `main` — do
    not touch it.
-5. Add the `NPM_TOKEN` repo secret (settings → secrets → actions).
-6. Trigger the first release via tag (see "Triggering a release" above), or
-   `npm publish --access public` manually as a fallback.
-7. Verify on npmjs.com: readme renders, repo link present, tarball
-   contains only `dist` + `package.json` + README + LICENSE, Provenance badge.
+5. **First publish — manual (one-time).** `npm whoami` → `bun run build` →
+   `npm publish --access public`. Creates the package on npm (no provenance
+   for this bootstrap version). See "Trusted Publishing setup" step 1.
+6. **Configure Trusted Publishing** on npmjs.com (package → Settings →
+   Trusted Publisher → GitHub Actions: TheMusicDev / jamendo-ts-client /
+   release.yml / release). Then harden: "Require 2FA and disallow tokens".
+   See "Trusted Publishing setup" steps 2-4.
+7. **Later releases** via tag — `git tag v0.1.1 && git push --tags` fires
+   release.yml (OIDC, provenance automatic). See "Triggering a release".
+8. Verify on npmjs.com: readme renders, repo link present, tarball
+   contains only `dist` + `package.json` + README + LICENSE, Provenance badge
+   (from the first OIDC release onward).

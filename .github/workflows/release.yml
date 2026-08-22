@@ -1,11 +1,20 @@
 name: Release
 
-# Publishes to npm when a version tag (v*) is pushed.
+# Publishes to npm using Trusted Publishing (OIDC) — no NPM_TOKEN secret.
 # Trigger: `git tag v0.1.0 && git push --tags`.
-# Requires repo secret `NPM_TOKEN` (granular publish token for
-# @themusicdev/jamendo-ts-client). `id-token: write` enables npm provenance
-# (sigstore build attestation — npm shows a green "Provenance" badge linking
-# the tarball back to this exact commit).
+#
+# How it works: GitHub mints a short-lived OIDC token (`id-token: write`);
+# the npm CLI exchanges it for a one-time publish credential. npm trusts
+# *this* repo + workflow because you configured it as a Trusted Publisher
+# on npmjs.com (package → Settings → Trusted Publisher → GitHub Actions,
+# org TheMusicDev / repo jamendo-ts-client / workflow release.yml).
+# Provenance is generated automatically — no `--provenance` flag needed.
+#
+# First publish of a NEW package CANNOT use OIDC (npm has no package page
+# to configure the trusted publisher on until the package exists). Publish
+# the first version manually (`npm publish --access public`), then set up
+# the trusted publisher, then this workflow takes over for later releases.
+# See pre-publish.md "Trusted Publishing setup" + "Triggering a release".
 
 on:
   push:
@@ -14,7 +23,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # npm provenance
+  id-token: write # npm Trusted Publishing (OIDC) — no token secret needed
 
 concurrency:
   group: release-${{ github.ref }}
@@ -24,6 +33,10 @@ jobs:
   publish:
     name: publish
     runs-on: ubuntu-latest
+    # Optional: lock to an environment that matches the npm Trusted Publisher
+    # config. Add a `release` environment in repo settings for extra gating
+    # (required reviewers, branch restrictions) if desired.
+    environment: release
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,7 +50,14 @@ jobs:
         env:
           # integration tests skip without a client id — keeps the gate offline
           JAMENDO_CLIENT_ID: ''
-      # `prepack` runs `bun run build` again before publish; harmless rebuild.
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Trusted Publishing needs npm CLI v11.5.1+ on Node 22.14+ (Node 24
+      # recommended). Bun's bundled npm-cli may not support the OIDC exchange,
+      # so install the real npm CLI on Node 24 for the publish step.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm install -g npm@latest
+      # Do NOT set NODE_AUTH_TOKEN — that forces the legacy token path and
+      # disables OIDC. Provenance is automatic for public packages.
+      - run: npm publish --access public
