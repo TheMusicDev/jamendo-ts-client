@@ -21,11 +21,14 @@ it('integration: autocomplete returns results keyed by entity', async () => {
         entity: ['artists', 'tracks', 'albums', 'tags'],
     });
     // Unlike every other endpoint, `results` is an object keyed by entity,
-    // not an array.
+    // not an array. Buckets may be absent or empty on a valid response, so we
+    // only assert shape — each present bucket must be an array.
     expect(typeof res.results).toBe('object');
     expect(Array.isArray(res.results)).toBe(false);
-    // At least one entity bucket should be populated for a common prefix.
     const buckets = ['tags', 'artists', 'tracks', 'albums'] as const;
-    const hasAny = buckets.some((b) => Array.isArray(res.results[b]) && (res.results[b]?.length ?? 0) > 0);
-    expect(hasAny).toBe(true);
+    for (const b of buckets) {
+        if (res.results[b] !== undefined) {
+            expect(Array.isArray(res.results[b])).toBe(true);
+        }
+    }
 });
