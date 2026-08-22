@@ -21,6 +21,3 @@ export const ListParamsSchema = z.object({
     limit: z.union([z.number().int().min(1), z.literal('all')]).optional(),
     fullcount: z.boolean().optional(),
 });
-
-export type ListParams = z.infer<typeof ListParamsSchema>;
-export type AudioFormat = z.infer<typeof AudioFormatSchema>;

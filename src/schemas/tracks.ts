@@ -9,13 +9,13 @@ import { AudioDLFormatSchema, AudioFormatSchema, ImageSizeSchema, ListParamsSche
  * `id` + `name` are the only always-present fields.
  */
 
-export const MusicInfoTagsSchema = z.object({
+const MusicInfoTagsSchema = z.object({
     genres: z.array(z.string()).optional(),
     instruments: z.array(z.string()).optional(),
     vartags: z.array(z.string()).optional(),
 });
 
-export const MusicInfoSchema = z.object({
+const MusicInfoSchema = z.object({
     vocalinstrumental: z.string().optional(),
     lang: z.string().optional(),
     gender: z.string().optional(),
@@ -24,7 +24,7 @@ export const MusicInfoSchema = z.object({
     tags: MusicInfoTagsSchema.optional(),
 });
 
-export const WaveformSchema = z.object({
+const WaveformSchema = z.object({
     peaks: z.array(z.number().int()).optional(),
 });
 

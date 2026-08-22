@@ -10,7 +10,7 @@ import { ListParamsSchema } from './params';
  * `id` is the only always-present field.
  */
 
-export const FeedImagesSchema = z.object({
+const FeedImagesSchema = z.object({
     size996_350: z.string().url().optional(),
     size315_111: z.string().url().optional(),
     size600_211: z.string().url().optional(),

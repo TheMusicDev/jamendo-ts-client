@@ -12,7 +12,7 @@ import { z } from 'zod';
  * documents `success` but the live API returns `succeed`; success is decided
  * by `headers.code === 0`, not by the status string.
  */
-export const HeadersSchema = z.object({
+const HeadersSchema = z.object({
     status: z.string(),
     code: z.number().int(),
     error_message: z.string(),
