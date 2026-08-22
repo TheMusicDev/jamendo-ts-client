@@ -76,7 +76,7 @@ export type {
     PlaylistTracksParams,
     PlaylistWithTracks,
 } from './schemas/playlists';
-export type { Radio, RadiosListParams } from './schemas/radios';
+export type { Radio, RadioPlayingNow, RadioStream, RadioStreamParams, RadiosListParams } from './schemas/radios';
 export type { AlbumReview, AlbumReviewsParams, TrackReview, TrackReviewsParams } from './schemas/reviews';
 export type {
     MusicInfo,
