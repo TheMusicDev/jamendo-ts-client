@@ -24,7 +24,7 @@ jobs:
           OPENROUTER.KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           config.model: 'openrouter/free'
-          config.fallback_models: '["openrouter/free","openrouter/nvidia/nemotron-3-nano-30b-a3b:free","openrouter/google/gemma-4-26b-a4b-it:free"]'
+          config.fallback_models: '["openrouter/free"]'
           config.custom_model_max_tokens: '32000'
           github_action_config.auto_review: 'true'
           github_action_config.auto_describe: 'true'
