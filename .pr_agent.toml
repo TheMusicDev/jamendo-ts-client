@@ -1,0 +1,58 @@
+# PR-Agent repo-level config, per https://docs.pr-agent.ai/installation/github/
+# ("reads a .pr_agent.toml file from your repository root"). Also mirrored
+# as literal dotted env vars (config.model, github_action_config.*, etc. —
+# PR-Agent's own convention, not Dynaconf __-nesting) in
+# .github/workflows/pr_agent.yml, kept in sync by hand: env vars
+# apply on every branch immediately, this file only applies once it's live
+# on the default branch — relevant for a PR (like the one that introduced
+# this file) that can't see its own not-yet-merged config. Keep both
+# updated together; don't let them drift.
+#
+# Requires an OPENROUTER_API_KEY secret in repo Settings > Secrets and
+# variables > Actions.
+
+[config]
+# openrouter/free is OpenRouter's auto-router across whatever free-tier
+# models are currently live — maximizes free token throughput and uptime
+# without pinning to one model that might get rate-limited or deprecated.
+# See https://openrouter.ai/collections/free-models for the current roster.
+model = "openrouter/free"
+fallback_models = ["openrouter/free"]
+# None of the models above are in PR-Agent's static MAX_TOKENS table
+# (pr_agent/algo/__init__.py), so get_max_tokens() raises for every one of
+# them unless this is set — every review/improve call failed with "Failed
+# to generate prediction with any model" until this was added. 32000 is a
+# conservative floor safe for all entries (actual context windows are
+# larger); bump if a fallback model's confirmed context window is larger
+# and longer diffs get truncated.
+custom_model_max_tokens = 32000
+
+[github_action_config]
+# auto_review/auto_describe/auto_improve run once on
+# opened/reopened/ready_for_review. handle_push_trigger defaults false, so
+# nothing re-ran on later pushes; we want /review and /improve to also
+# re-run on every push — not /describe, which only needs regenerating if
+# the PR's overall intent changes, not on every commit.
+auto_review = true
+auto_describe = true
+auto_improve = true
+handle_push_trigger = true
+push_commands = ["/review", "/improve"]
+
+[pr_reviewer]
+extra_instructions = """\
+Focus on:
+- Rate-limit/backoff correctness (src/core/rateLimit, p-retry, 429 vs hard errors)
+- zod response schema correctness vs Jamendo API shape (results/resultsCount/headers)
+- keyv cache: key construction, TTL, invalidation on writes
+- ofetch error handling and retry boundaries
+- Type exports and public API surface stability (dist/index.d.ts)
+"""
+
+[pr_code_suggestions]
+num_code_suggestions = 5
+suggestions_score_threshold = 7
+
+[pr_description]
+push_labels = true
+publish_labels = true
