@@ -5,13 +5,13 @@ A type-safe TypeScript HTTP client for the [Jamendo API](https://developer.jamen
 ## Install
 
 ```bash
-bun add jamendo-ts-client
+bun add @themusicdev/jamendo-ts-client
 ```
 
 ## Quick start
 
 ```ts
-import { createJamendoClient } from 'jamendo-ts-client';
+import { createJamendoClient } from '@themusicdev/jamendo-ts-client';
 
 const client = createJamendoClient({ clientId: process.env.JAMENDO_CLIENT_ID! });
 
@@ -61,7 +61,7 @@ const client = createJamendoClient({
 Jamendo signals errors in the response envelope (`headers.code`), not via HTTP status. The client normalizes them to typed errors you can switch on via `err.code`:
 
 ```ts
-import { JamendoError, JamendoRateLimit, JamendoSchemaError, JamendoErrorCode } from 'jamendo-ts-client';
+import { JamendoError, JamendoRateLimit, JamendoSchemaError, JamendoErrorCode } from '@themusicdev/jamendo-ts-client';
 
 try {
   await client.tracks.list({ ... });
