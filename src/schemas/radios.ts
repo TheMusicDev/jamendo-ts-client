@@ -37,11 +37,13 @@ export type RadiosListParams = z.infer<typeof RadiosListParamsSchema>;
 
 /**
  * `playingnow` object returned by `/radios/stream` — describes the currently
- * streamed track. `track_id` is 0 when nothing is currently playing.
+ * streamed track. The OpenAPI `RadioPlayingNow` schema has no `required`
+ * array, so every field is optional (Jamendo returns `track_id: 0` when
+ * nothing is playing, but omits it entirely in some responses).
  * Hand-written from openapi-3.1.yaml `RadioPlayingNow`.
  */
 export const RadioPlayingNowSchema = z.object({
-    track_id: z.number().int(),
+    track_id: z.number().int().optional(),
     artist_id: z.number().int().optional(),
     album_id: z.number().int().optional(),
     album_name: z.string().optional(),

@@ -16,7 +16,10 @@ export interface RadiosApi {
     list(params?: RadiosListParams): Promise<ApiResult<Radio>>;
     /**
      * Get a radio's stream URL and currently playing track (`GET /radios/stream`).
-     * Cacheable. One of `id` or `name` is required by the API.
+     * NOT cached — the response is real-time: `playingnow` reflects the current
+     * track and `callmeback` (ms) tells the caller when to re-poll. Caching
+     * would serve stale playback state past the server-advertised transition.
+     * One of `id` or `name` is required by the API.
      *
      * **Documented as unreliable by Jamendo** — the returned stream link "is
      * not more working, and it could be never fixed". Confirm against the
@@ -37,7 +40,7 @@ export function radios(request: RequestFn): RadiosApi {
             request<RadioStream>('GET', '/radios/stream', parseParams(RadioStreamParamsSchema, params), {
                 opId: 'getRadioStream',
                 schema: RadioStreamSchema,
-                cache: true,
+                cache: false,
             }),
     };
 }

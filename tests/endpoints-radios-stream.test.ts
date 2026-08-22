@@ -39,7 +39,7 @@ function mockRequest(): { request: RequestFn; calls: Call[] } {
     return { request, calls };
 }
 
-test('radios.stream: GET /radios/stream, opId getRadioStream, cacheable', async () => {
+test('radios.stream: GET /radios/stream, opId getRadioStream, not cached (real-time)', async () => {
     const { request, calls } = mockRequest();
     const api = radios(request);
     await api.stream({ id: 5 });
@@ -47,7 +47,7 @@ test('radios.stream: GET /radios/stream, opId getRadioStream, cacheable', async 
     expect(calls[0]?.method).toBe('GET');
     expect(calls[0]?.path).toBe('/radios/stream');
     expect(calls[0]?.options.opId).toBe('getRadioStream');
-    expect(calls[0]?.options.cache).toBe(true);
+    expect(calls[0]?.options.cache).toBe(false);
 });
 
 test('radios.stream: passes id through', async () => {
