@@ -144,4 +144,4 @@ vite.config.ts.timestamp-*
 
 .idea/*
 CLAUDE.md
-
+.claude/worktrees/*
