@@ -23,47 +23,46 @@ CI before it can reach npm.
 
 ## Releasing (0.1.1 onward)
 
-```sh
-# bump version in package.json
-git commit -am "chore(release): vX.Y.Z"
-git tag vX.Y.Z
-git push && git push --tags          # tag push fires release.yml
-```
+Three steps:
 
-`.github/workflows/release.yml` (job `publish`, environment `release`):
+1. Bump `version` in `package.json` → `X.Y.Z`.
+2. Regenerate the changelog, commit, tag, push:
+   ```sh
+   git-cliff --output CHANGELOG.md      # regenerate through this release
+   git add package.json CHANGELOG.md
+   git commit -m "chore(release): vX.Y.Z"
+   git tag vX.Y.Z
+   git push && git push --tags          # tag push fires release.yml
+   ```
+3. The pushed tag fires `.github/workflows/release.yml` (job `publish`,
+   environment `release`), which builds, tests, publishes via OIDC, and
+   creates the GitHub Release. No further action needed.
+
+`release.yml` itself:
 
 1. `bun install` / `bun run build` / `bun run check:types` / `bun run test`
-2. Regenerate `CHANGELOG.md` from conventional commits via
-   [git-cliff](https://git-cliff.org/) (`cliff.toml`), commit it straight to
-   `main` (`docs(changelog): update for vX.Y.Z [skip ci]`). Skipped if
-   nothing changed. Runs before publish, so a changelog failure blocks the
-   release instead of leaving a published version with a stale changelog.
-3. `setup-node` (Node 24) + latest npm — the OIDC exchange needs npm CLI
+2. `setup-node` (Node 24) + latest npm — the OIDC exchange needs npm CLI
    v11.5.1+; Bun builds/tests, Node publishes.
-4. `npm publish --access public` via **Trusted Publishing (OIDC)** — GitHub
+3. `npm publish --access public` via **Trusted Publishing (OIDC)** — GitHub
    mints a short-lived OIDC token (`id-token: write`) that the npm CLI
    exchanges for a one-time publish credential; no `NPM_TOKEN` secret.
    Provenance is automatic (no `--provenance` flag needed).
-5. `gh release create vX.Y.Z --generate-notes` — creates the GitHub Release
+4. `gh release create vX.Y.Z --generate-notes` — creates the GitHub Release
    with auto-generated notes (commit subjects since the last tag;
    conventional-commit prefixes like `feat:`/`fix:`/`chore:` keep the list
    scannable).
 
-One tag → `CHANGELOG.md` update + npm publish (OIDC + provenance) +
-GitHub Release. Version bump is always manual — the workflow publishes
-whatever `package.json` `version` is at the tagged commit; it never bumps it.
-
-### Regenerating the changelog locally
-
-```sh
-brew install git-cliff   # or: cargo install git-cliff
-git-cliff --output CHANGELOG.md   # full history, per cliff.toml
-git-cliff --unreleased             # preview what the next release will add
-```
+CI never writes to `main` — the changelog is part of the release commit you
+push in step 2, not something a later CI step commits back. That keeps the
+release flow to one push with no race against other pushes landing on `main`
+mid-run and no risk of a CI re-run producing a divergent changelog commit.
 
 `cliff.toml` groups commits by conventional-commit type (feat/fix/docs/...),
 matching `.commitlintrc.json`. Merge commits and `chore(release): ...` bump
 commits are excluded from the changelog body — they're not user-facing.
+Install with `brew install git-cliff` (or `cargo install git-cliff`) if not
+already on the release machine. `git-cliff --unreleased` previews what the
+next release will add without writing the file.
 
 Verify after: npmjs.com shows the new version with a green Provenance badge;
 the Releases page has the matching tag with generated notes.
