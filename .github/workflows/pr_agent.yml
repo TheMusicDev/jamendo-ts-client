@@ -36,7 +36,7 @@ jobs:
           # Caveat: fallback fires on ERROR only. A free model that succeeds
           # with a weak review is kept — no quality escalation to Haiku.
           # Acceptable for advisory review.
-          config.model: 'z-ai/glm-5.2:free'
+          config.model: 'openrouter/z-ai/glm-5.2:free'
           config.fallback_models: '["openrouter/free","openrouter/anthropic/claude-haiku-4.5"]'
           # custom_model_max_tokens declares Haiku's context window (input
           # budget), NOT output reservation. Haiku 4.5 has a 200k window.
