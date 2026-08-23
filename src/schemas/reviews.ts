@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { UrlOrEmptySchema } from './common';
 import { AudioDLFormatSchema, AudioFormatSchema, ListParamsSchema } from './params';
 
 /**
@@ -38,9 +39,9 @@ export const TrackReviewSchema = ReviewBaseSchema.extend({
     album_id: z.string().optional(),
     artist_id: z.string().optional(),
     track_audiodownload_allowed: z.boolean().optional(),
-    track_license_ccurl: z.string().url().optional(),
-    track_audio: z.string().url().optional(),
-    track_audiodownload: z.string().url().optional(),
+    track_license_ccurl: UrlOrEmptySchema.optional(),
+    track_audio: UrlOrEmptySchema.optional(),
+    track_audiodownload: UrlOrEmptySchema.optional(),
 });
 
 export type AlbumReview = z.infer<typeof AlbumReviewSchema>;

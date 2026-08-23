@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { LocalizedTextSchema } from './common';
+import { LocalizedTextSchema, UrlOrEmptySchema } from './common';
 import { ListParamsSchema } from './params';
 
 /**
@@ -11,16 +11,16 @@ import { ListParamsSchema } from './params';
  */
 
 const FeedImagesSchema = z.object({
-    size996_350: z.string().url().optional(),
-    size315_111: z.string().url().optional(),
-    size600_211: z.string().url().optional(),
-    size470_165: z.string().url().optional(),
+    size996_350: UrlOrEmptySchema.optional(),
+    size315_111: UrlOrEmptySchema.optional(),
+    size600_211: UrlOrEmptySchema.optional(),
+    size470_165: UrlOrEmptySchema.optional(),
 });
 
 export const FeedSchema = z.object({
     id: z.string(),
     title: LocalizedTextSchema.optional(),
-    link: z.string().url().optional(),
+    link: UrlOrEmptySchema.optional(),
     position: z.string().optional(),
     lang: z.array(z.string()).optional(),
     date_start: z.string().optional(),
@@ -30,7 +30,12 @@ export const FeedSchema = z.object({
         .enum(['album', 'artist', 'playlist', 'track', 'news', 'interview', 'contest', 'video', 'update'])
         .optional(),
     joinid: z.string().optional(),
-    subtitle: z.array(z.string()).optional(),
+    // API sends `[]` (empty-array sentinel) when there's no subtitle, or a
+    // LocalizedText object when there is — never a populated string array.
+    // Preprocess drops the sentinel to undefined so the public type is a
+    // plain LocalizedText, with no dead "always-empty array" branch to
+    // confuse consumers.
+    subtitle: z.preprocess((val) => (Array.isArray(val) ? undefined : val), LocalizedTextSchema.optional()),
     target: z.enum(['all', 'logged', 'notlogged']).optional(),
     images: FeedImagesSchema.optional(),
 });

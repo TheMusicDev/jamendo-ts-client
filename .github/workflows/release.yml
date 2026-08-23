@@ -46,10 +46,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: bun run check:types
-      - run: bun test
-        env:
-          # integration tests skip without a client id — keeps the gate offline
-          JAMENDO_CLIENT_ID: ''
+      - run: bun run test
       # Trusted Publishing needs npm CLI v11.5.1+ on Node 22.14+ (Node 24
       # recommended). Bun's bundled npm-cli may not support the OIDC exchange,
       # so install the real npm CLI on Node 24 for the publish step.

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { AlbumTrackItemSchema } from './albums';
+import { UrlOrEmptySchema } from './common';
 import { AudioDLFormatSchema, AudioFormatSchema, ImageSizeSchema, ListParamsSchema } from './params';
 
 /**
@@ -19,9 +20,9 @@ export const PlaylistSchema = z.object({
     creationdate: z.string().optional(),
     user_id: z.string().optional(),
     user_name: z.string().optional(),
-    zip: z.string().url().optional(),
-    shorturl: z.string().url().optional(),
-    shareurl: z.string().url().optional(),
+    zip: UrlOrEmptySchema.optional(),
+    shorturl: UrlOrEmptySchema.optional(),
+    shareurl: UrlOrEmptySchema.optional(),
 });
 
 /** Playlist with nested tracks, returned by `/playlists/tracks`. */

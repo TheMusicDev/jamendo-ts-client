@@ -9,7 +9,7 @@ pre-commit:
       stage_fixed: true
     - name: test
       glob: "*.{js,ts,tsx,jsx}"
-      run: bun test
+      run: bun run test
 
 commit-msg:
   jobs:

@@ -1,0 +1,9 @@
+{
+    "name": "jamendo-ts-client-examples",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "start": "bun run index.ts"
+    }
+}

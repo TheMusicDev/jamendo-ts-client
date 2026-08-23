@@ -23,7 +23,10 @@ it('integration: playlists.list returns typed results', async () => {
 
 it('integration: playlists.tracks returns playlists with nested tracks', async () => {
     const client = createJamendoClient({ clientId: clientId! });
-    const res = await client.playlists.tracks({ limit: 2 });
+    const list = await client.playlists.list({ limit: 1 });
+    const id = list.results[0]?.id;
+    if (!id) throw new Error('no playlist available to fetch tracks for');
+    const res = await client.playlists.tracks({ limit: 2, id: [Number(id)] });
     expect(Array.isArray(res.results)).toBe(true);
     expect(res.results.length).toBeLessThanOrEqual(2);
 });

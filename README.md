@@ -123,16 +123,18 @@ File/stream endpoints (`/tracks/file`, `/albums/file`, `/playlists/file` — 302
 
 ```bash
 bun install
-bun test
+bun run test
 bun run lint
 bun run check:types
 bun run build
 ```
 
-Integration smoke test (hits the live API) runs when `JAMENDO_CLIENT_ID` is set:
+`bun run test` runs the mocked unit suite only — no network, no credentials.
+Integration tests (hit the live API, one file per resource under
+`tests/integration*.test.ts`) run separately and need `JAMENDO_CLIENT_ID`:
 
 ```bash
-JAMENDO_CLIENT_ID=... bun test tests/integration.test.ts
+JAMENDO_CLIENT_ID=... bun run test:integration
 ```
 
 ## License
