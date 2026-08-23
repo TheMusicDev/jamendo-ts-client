@@ -33,20 +33,37 @@ git push && git push --tags          # tag push fires release.yml
 `.github/workflows/release.yml` (job `publish`, environment `release`):
 
 1. `bun install` / `bun run build` / `bun run check:types` / `bun run test`
-2. `setup-node` (Node 24) + latest npm — the OIDC exchange needs npm CLI
+2. Regenerate `CHANGELOG.md` from conventional commits via
+   [git-cliff](https://git-cliff.org/) (`cliff.toml`), commit it straight to
+   `main` (`docs(changelog): update for vX.Y.Z [skip ci]`). Skipped if
+   nothing changed. Runs before publish, so a changelog failure blocks the
+   release instead of leaving a published version with a stale changelog.
+3. `setup-node` (Node 24) + latest npm — the OIDC exchange needs npm CLI
    v11.5.1+; Bun builds/tests, Node publishes.
-3. `npm publish --access public` via **Trusted Publishing (OIDC)** — GitHub
+4. `npm publish --access public` via **Trusted Publishing (OIDC)** — GitHub
    mints a short-lived OIDC token (`id-token: write`) that the npm CLI
    exchanges for a one-time publish credential; no `NPM_TOKEN` secret.
    Provenance is automatic (no `--provenance` flag needed).
-4. `gh release create vX.Y.Z --generate-notes` — creates the GitHub Release
+5. `gh release create vX.Y.Z --generate-notes` — creates the GitHub Release
    with auto-generated notes (commit subjects since the last tag;
    conventional-commit prefixes like `feat:`/`fix:`/`chore:` keep the list
    scannable).
 
-One tag → npm publish (OIDC + provenance) + GitHub Release. Version bump is
-always manual — the workflow publishes whatever `package.json` `version` is
-at the tagged commit; it never bumps it.
+One tag → `CHANGELOG.md` update + npm publish (OIDC + provenance) +
+GitHub Release. Version bump is always manual — the workflow publishes
+whatever `package.json` `version` is at the tagged commit; it never bumps it.
+
+### Regenerating the changelog locally
+
+```sh
+brew install git-cliff   # or: cargo install git-cliff
+git-cliff --output CHANGELOG.md   # full history, per cliff.toml
+git-cliff --unreleased             # preview what the next release will add
+```
+
+`cliff.toml` groups commits by conventional-commit type (feat/fix/docs/...),
+matching `.commitlintrc.json`. Merge commits and `chore(release): ...` bump
+commits are excluded from the changelog body — they're not user-facing.
 
 Verify after: npmjs.com shows the new version with a green Provenance badge;
 the Releases page has the matching tag with generated notes.
