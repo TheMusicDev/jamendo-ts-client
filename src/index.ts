@@ -1,5 +1,5 @@
 /**
- * jamendo-ts-client — hand-written HTTP client for the Jamendo API v3.0.
+ * @themusicdev/jamendo-ts-client — hand-written HTTP client for the Jamendo API v3.0.
  *
  * Only types are exported from here. Runtime zod schemas are internal: the
  * public surface is the client factory, config/error types, and the

@@ -1,10 +1,21 @@
 {
-    "name": "jamendo-ts-client",
+    "name": "@themusicdev/jamendo-ts-client",
     "version": "0.1.0",
     "description": "TypeScript client for the Jamendo API",
     "license": "MIT",
     "author": "Angel S. Moreno",
     "type": "module",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TheMusicDev/jamendo-ts-client.git"
+    },
+    "homepage": "https://github.com/TheMusicDev/jamendo-ts-client#readme",
+    "bugs": {
+        "url": "https://github.com/TheMusicDev/jamendo-ts-client/issues"
+    },
+    "engines": {
+        "node": ">=18"
+    },
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {

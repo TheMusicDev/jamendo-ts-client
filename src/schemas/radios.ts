@@ -40,7 +40,7 @@ export type RadiosListParams = z.infer<typeof RadiosListParamsSchema>;
  * streamed track. `track_id` is 0 when nothing is currently playing.
  * Hand-written from openapi-3.1.yaml `RadioPlayingNow`.
  */
-export const RadioPlayingNowSchema = z.object({
+const RadioPlayingNowSchema = z.object({
     track_id: z.number().int(),
     artist_id: z.number().int().optional(),
     album_id: z.number().int().optional(),

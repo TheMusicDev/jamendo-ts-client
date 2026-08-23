@@ -23,11 +23,44 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENROUTER.KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          config.model: 'openrouter/free'
-          config.fallback_models: '["openrouter/free"]'
-          config.custom_model_max_tokens: '32000'
+          # PR-Agent is advisory (workflow stays green on LLM failure, not a
+          # merge gate), so free-first is the right cost/quality trade. Ladder:
+          # 1. z-ai/glm-5.2:free — free, 256k ctx, MULTI-provider (Decart,
+          #    Fireworks, Venice, Baseten +27) so OpenRouter reroutes on a
+          #    provider 502 (unlike single-provider Stealth free models).
+          #    Tool calling + structured output. Solid for code review.
+          # 2. openrouter/free — free meta-router across ~24 free variants.
+          # 3. anthropic/claude-haiku-4.5 — paid last resort ($1/M in, $5/M
+          #    out) only fires when both free tiers error. Needs the $10
+          #    balance (also unlocks 1000 free/day cap).
+          # Caveat: fallback fires on ERROR only. A free model that succeeds
+          # with a weak review is kept — no quality escalation to Haiku.
+          # Acceptable for advisory review.
+          config.model: 'openrouter/z-ai/glm-5.2:free'
+          # Light tier (/describe, /ask, /update_changelog) routes to Ollama
+          # Cloud — a genuinely DIFFERENT provider from OpenRouter, so its rate
+          # limits are independent (no shared OpenRouter 20 RPM pool, no
+          # correlated 429s). Free tier: 1 concurrent, light usage, resets
+          # every 5h session / 7d weekly. ollama_chat/ prefix (not ollama/)
+          # enables Bearer auth via OLLAMA_API_KEY. gpt-oss:20b-cloud is the
+          # lighter cloud variant — avoids the level-4 (heavy) 120b model that
+          # would exhaust the free weekly quota faster. /describe is light
+          # work (PR summary); 20b is ample.
+          config.model_weak: 'ollama_chat/gpt-oss:20b-cloud'
+          OLLAMA_API_BASE: 'https://ollama.com'
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+          config.fallback_models: '["openrouter/free","openrouter/anthropic/claude-haiku-4.5"]'
+          # custom_model_max_tokens declares Haiku's context window (input
+          # budget), NOT output reservation. Haiku 4.5 has a 200k window.
+          config.custom_model_max_tokens: '200000'
+          # openrouter.max_tokens is the hard cap on COMPLETION (output) tokens
+          # — the value OpenRouter reserves credits against (max_tokens ×
+          # output price). Haiku = $5/M out, so 4000 out → $0.02 reserved/call,
+          # affordable on a $10 balance. Reviews/improvements need a few
+          # hundred output tokens; 4000 is ample headroom.
+          openrouter.max_tokens: '4000'
           github_action_config.auto_review: 'true'
           github_action_config.auto_describe: 'true'
-          github_action_config.auto_improve: 'true'
+          github_action_config.auto_improve: 'false'
           github_action_config.handle_push_trigger: 'true'
-          github_action_config.push_commands: '["/review", "/improve"]'
+          github_action_config.push_commands: '["/review"]'

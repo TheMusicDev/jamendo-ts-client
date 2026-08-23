@@ -22,7 +22,7 @@ export const ArtistSchema = z.object({
 });
 
 /** Nested track as it appears inside an artist (`/artists/tracks`). */
-export const ArtistTrackItemSchema = z.object({
+const ArtistTrackItemSchema = z.object({
     album_id: z.string().optional(),
     album_name: z.string().optional(),
     id: z.string().optional(),
@@ -38,7 +38,7 @@ export const ArtistTrackItemSchema = z.object({
 });
 
 /** Nested album as it appears inside an artist (`/artists/albums`). */
-export const ArtistAlbumItemSchema = z.object({
+const ArtistAlbumItemSchema = z.object({
     id: z.string().optional(),
     name: z.string().optional(),
     releasedate: z.string().optional(),
@@ -46,7 +46,7 @@ export const ArtistAlbumItemSchema = z.object({
 });
 
 /** Geographic location entry (`/artists/locations`). */
-export const ArtistLocationSchema = z.object({
+const ArtistLocationSchema = z.object({
     id: z.string().optional(),
     longitude: z.string().optional(),
     latitude: z.string().optional(),
