@@ -14,7 +14,7 @@ name: Release
 # to configure the trusted publisher on until the package exists). Publish
 # the first version manually (`npm publish --access public`), then set up
 # the trusted publisher, then this workflow takes over for later releases.
-# See pre-publish.md "Trusted Publishing setup" + "Triggering a release".
+# See PUBLISH.md.
 
 on:
   push:
@@ -62,7 +62,7 @@ jobs:
       # conventional-commit type via .github/release.yml). GITHUB_REF_NAME is
       # the tag (e.g. v0.1.1). Runs after publish, so a failed publish skips
       # this too (the `needs`-like ordering of steps). Skip on the bootstrap
-      # 0.1.0 run — that release is created by hand (see pre-publish.md).
+      # 0.1.0 run — that release is created by hand (see PUBLISH.md).
       - run: gh release create "$GITHUB_REF_NAME" --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
