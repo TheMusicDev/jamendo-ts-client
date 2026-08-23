@@ -37,6 +37,17 @@ jobs:
           # with a weak review is kept — no quality escalation to Haiku.
           # Acceptable for advisory review.
           config.model: 'openrouter/z-ai/glm-5.2:free'
+          # Light tier (/describe, /ask, /update_changelog) routes to Ollama
+          # Cloud — a genuinely DIFFERENT provider from OpenRouter, so its rate
+          # limits are independent (no shared OpenRouter 20 RPM pool, no
+          # correlated 429s). Free tier: 1 concurrent, light usage, resets
+          # every 5h session / 7d weekly. ollama_chat/ prefix (not ollama/)
+          # enables Bearer auth via OLLAMA_API_KEY. gpt-oss:120b-cloud is a
+          # level-4 (heavy) model — may exhaust the free weekly quota faster
+          # than a lighter model; swap to e.g. gpt-oss:20b-cloud if it does.
+          config.model_weak: 'ollama_chat/gpt-oss:120b-cloud'
+          OLLAMA_API_BASE: 'https://ollama.com'
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
           config.fallback_models: '["openrouter/free","openrouter/anthropic/claude-haiku-4.5"]'
           # custom_model_max_tokens declares Haiku's context window (input
           # budget), NOT output reservation. Haiku 4.5 has a 200k window.
