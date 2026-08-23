@@ -1,16 +1,8 @@
-# Publishing jamendo-ts-client
+# Publishing `@themusicdev/jamendo-ts-client`
 
-This document describes how to publish `jamendo-ts-client` to the npm registry.
-The first release is **0.1.0** (locked in `package.json`).
-
-## Prerequisites
-
-- Node.js / Bun installed.
-- An npm account that is a member of the package's owning scope (the package
-  is unscoped, so the first publish claims the `jamendo-ts-client` name — make
-  sure no one else owns it).
-- Run `npm login` once (or configure an auth token via `npm config set
-  //registry.npmjs.org/:_authToken=...`).
+How releases work. `0.1.0` shipped manually (see "First release" below);
+every release from `0.1.1` on is a single `git tag` push — CI builds, tests,
+and publishes via npm Trusted Publishing (OIDC), no token in the repo.
 
 ## What gets published
 
@@ -21,58 +13,88 @@ The first release is **0.1.0** (locked in `package.json`).
 - `README.md`
 - `package.json`
 
-Excluded (verified via `npm pack --dry-run`): `openapi-docs/`, `client-plan.md`,
-`tests/`, `.env`, `.env.example`, `src/`, `tsconfig*.json`, config files.
+Everything else (`src/`, `tests/`, `client-plan.md`, config files, `.env*`)
+is excluded. The `pack` job in `.github/workflows/ci_check.yml` asserts this
+on every PR via `npm pack --dry-run --json`, so a `files`-field mistake fails
+CI before it can reach npm.
 
-`publishConfig: { access: "public" }` is set, so `npm publish` works without
-passing `--access` explicitly.
+`publishConfig.access: public` is set — required for a scoped package
+(`@themusicdev/...`), otherwise npm defaults scoped packages to private.
 
-The `prepack` script (`bun run build`) runs automatically before publish, so
-`dist/` is always fresh.
+## Releasing (0.1.1 onward)
 
-## Recommended publish command (v1 — manual)
-
-For the first `0.1.0` release, manual publish is the simplest path:
-
-```bash
-# from a clean main after the D1 PR merges
-git checkout main
-git pull
-bun install
-npm publish --access public
+```sh
+# bump version in package.json
+git commit -am "chore(release): vX.Y.Z"
+git tag vX.Y.Z
+git push && git push --tags          # tag push fires release.yml
 ```
 
-Then tag the release:
+`.github/workflows/release.yml` (job `publish`, environment `release`):
 
-```bash
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
+1. `bun install` / `bun run build` / `bun run check:types` / `bun run test`
+2. `setup-node` (Node 24) + latest npm — the OIDC exchange needs npm CLI
+   v11.5.1+; Bun builds/tests, Node publishes.
+3. `npm publish --access public` via **Trusted Publishing (OIDC)** — GitHub
+   mints a short-lived OIDC token (`id-token: write`) that the npm CLI
+   exchanges for a one-time publish credential; no `NPM_TOKEN` secret.
+   Provenance is automatic (no `--provenance` flag needed).
+4. `gh release create vX.Y.Z --generate-notes` — creates the GitHub Release
+   with auto-generated notes (commit subjects since the last tag;
+   conventional-commit prefixes like `feat:`/`fix:`/`chore:` keep the list
+   scannable).
+
+One tag → npm publish (OIDC + provenance) + GitHub Release. Version bump is
+always manual — the workflow publishes whatever `package.json` `version` is
+at the tagged commit; it never bumps it.
+
+Verify after: npmjs.com shows the new version with a green Provenance badge;
+the Releases page has the matching tag with generated notes.
+
+## First release (0.1.0 — already done, historical)
+
+`0.1.0` could not use Trusted Publishing: the package didn't exist on npm
+yet, so there was no settings page to configure a trusted publisher on. It
+was published by hand once, then the trusted publisher was configured
+after the fact:
+
+```sh
+npm whoami                                  # confirm @themusicdev membership
+bun run build
+npm pack --dry-run                          # sanity-check tarball contents
+npm publish --access public                 # 2FA prompt
+gh release create v0.1.0 --generate-notes
 ```
 
-If you prefer Bun's packager, `bun publish` also works but does not support
-provenance; `npm publish` is recommended for the first release.
+Then, on npmjs.com (once the package existed):
 
-## Provenance (deferred to a later release)
+- Package page → Settings → Trusted Publisher → add GitHub Actions:
+  - Organization/user: `TheMusicDev`
+  - Repository: `jamendo-ts-client`
+  - Workflow filename: `release.yml` (filename only)
+  - Environment: `release`
+- Same page → Publishing access → **"Require 2FA and disallow tokens"**
+  (kills token publishing; only OIDC from here on).
+- Same page → Allowed Actions → check **"Allow npm publish"** only.
+  `release.yml` runs `npm publish --access public` — that's the action this
+  checkbox gates. Leave **"Allow npm stage publish"** unchecked; it gates
+  npm's separate staged/unpublished pre-release feature
+  (`npm publish --stage`), which the workflow doesn't use.
 
-npm provenance (`--provenance`) signs the package with a Sigstore bundle
-attesting to the exact source/commit that produced it. It requires publishing
-from GitHub Actions with the `id-token: write` permission and a configured
-OIDC trust relationship.
+This section stays for reference — it only applies again if the package
+were ever unpublished and re-created from scratch.
 
-This is valuable but adds a CI workflow + permissions setup that is not needed
-for the first `0.1.0` manual publish. Provenance is **deferred** to a later
-release; when ready, add a `.github/workflows/publish.yml` that:
+## Common pitfalls
 
-1. Runs on a `v*` tag push.
-2. Sets `permissions: { id-token: write, contents: read }`.
-3. Runs `bun install`, `bun run build`, `bun test`.
-4. Runs `npm publish --access public --provenance` using
-   `NPM_CONFIG_PROVENANCE=true` and an npm token stored as a repository
-   secret (`NPM_TOKEN`).
-
-Until that workflow exists, publish manually with the command above.
+- **E404 on publish** → trusted publisher config mismatch (org/repo/workflow/
+  environment must match `release.yml` exactly, case-sensitive).
+- **`version already exists`** → the tag doesn't match `package.json`
+  `version` (npm rejects mismatches), or the same tag was pushed twice.
+- **Legacy token path used** → a `NODE_AUTH_TOKEN` env set somewhere;
+  `release.yml` does not set one — don't add it.
+- `package.json` `repository.url` must exactly match the GitHub repo.
 
 ## Versioning
 
-Follow SemVer. Bump `package.json` `version`, commit, tag, push, then run the
-publish command. `0.1.0` is the first real release.
+Follow SemVer. Bump `package.json` `version`, commit, tag, push — the release
+steps above do the rest.
