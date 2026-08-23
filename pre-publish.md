@@ -47,15 +47,17 @@ rest are open. Last updated 2026-08-22.
 - [x] **Release workflow.** Added `.github/workflows/release.yml`. Fires on
       `git push --tags v*` → builds, typechecks, tests, then
       `npm publish --access public` via **Trusted Publishing (OIDC)** — no
-      `NPM_TOKEN` secret. `id-token: write` lets GitHub mint a short-lived
-      OIDC token the npm CLI exchanges for a one-time publish credential.
-      Provenance is automatic (no `--provenance` flag). Uses `setup-node`
-      (Node 24, npm latest) for the publish step because the OIDC exchange
-      needs npm CLI v11.5.1+; Bun builds/tests, Node publishes. Version bump
-      is manual: bump `package.json` `version`, commit, tag, push the tag.
-      The workflow does NOT bump — it publishes whatever version is in
-      `package.json` at the tagged commit. See "Trusted Publishing setup"
-      + "Triggering a release" below.
+      `NPM_TOKEN` secret — **then** `gh release create --generate-notes` so
+      one tag publishes AND creates the GitHub Release. `id-token: write`
+      lets GitHub mint a short-lived OIDC token the npm CLI exchanges for a
+      one-time publish credential. Provenance is automatic (no
+      `--provenance` flag). Uses `setup-node` (Node 24, npm latest) for the
+      publish step because the OIDC exchange needs npm CLI v11.5.1+; Bun
+      builds/tests, Node publishes. Version bump is manual: bump
+      `package.json` `version`, commit, tag, push the tag. The workflow does
+      NOT bump — it publishes whatever version is in `package.json` at the
+      tagged commit. Also added `.github/release.yml` (groups conventional-
+      commit labels into release-note sections). See "Three phases" below.
 - [x] **`npm pack --dry-run` CI job.** Added a `pack` job to
       `.github/workflows/ci_check.yml` that builds, runs
       `npm pack --dry-run --json`, and asserts every packed path is under
@@ -73,89 +75,98 @@ rest are open. Last updated 2026-08-22.
       registry installs). Low risk; leave unless git installs need
       guarding.
 
-## Trusted Publishing setup (one-time, after first publish)
+## Three phases — exact steps
 
-npm Trusted Publishing (OIDC) needs the package to **already exist** — the
-trusted-publisher config lives on the package's npmjs.com settings page,
-which only appears after the first publish. So the first version is manual,
-then OIDC takes over. (npm has no "pending publisher" flow for new packages
-yet — tracked in npm/cli#8544.)
+### Phase 1 — bootstrap v0.1.0 (one-time, all manual; release.yml NOT used)
 
-1. **First publish (manual, one-time).** From a machine logged into the
-   `@themusicdev` org member account:
-   ```sh
-   npm whoami                         # confirm membership
-   bun run build                      # build dist/
-   npm publish --access public        # 2FA prompt; creates the package
-   ```
-   This creates `@themusicdev/jamendo-ts-client` on npm. It ships WITHOUT
-   provenance (manual publish) — that's fine for the bootstrap version.
-
-2. **Configure the trusted publisher on npmjs.com.** Open
-   https://www.npmjs.com/package/@themusicdev/jamendo-ts-client →
-   Settings → Trusted Publisher → add a GitHub Actions publisher:
-   - Organization/user: `TheMusicDev`
-   - Repository: `jamendo-ts-client`
-   - Workflow filename: `release.yml` (filename only, not the path)
-   - Environment: `release` (matches the `environment:` in release.yml;
-     leave blank there too if you skip the environment)
-
-3. **Harden.** Same page → Publishing access → **"Require 2FA and disallow
-   tokens"**. This kills all token-based publishing; only OIDC works from
-   here on.
-
-4. **Add the `release` environment (optional).** Repo settings →
-   Environments → New environment `release`. Add required reviewers / branch
-   restrictions if you want a human gate before publish. Skip if unused —
-   then also remove `environment: release` from release.yml (or leave it;
-   a missing environment is just not enforced).
-
-## Triggering a release (release.yml, after trusted publisher is set)
-
-`release.yml` publishes to npm automatically when a `v*` tag is pushed.
-It does **not** bump the version — you own the version number in
-`package.json`. Flow:
+The first version can't use Trusted Publishing — the package doesn't exist
+on npm yet, so there's no settings page to configure the trusted publisher
+on. So 0.1.0 is published and released by hand, once. release.yml is ignored
+for this version (it will fire when you create the release tag below and
+fail — no trusted publisher + version already on npm — that one failed run
+is cosmetic; delete it).
 
 ```sh
-# 1. bump version (package.json) — e.g. 0.1.0 → 0.1.1
-# 2. commit
-git commit -am "chore(release): v0.1.1"
-# 3. tag MUST match the package.json version (npm rejects mismatches)
-git tag v0.1.1
-# 4. push commit + tag — the tag fires release.yml
-git push && git push --tags
+# from a machine logged into the @themusicdev member account, on main after the PR merged:
+npm whoami                          # confirm @themusicdev membership
+bun run build                       # build dist/
+npm pack --dry-run                  # sanity-check what ships (only dist/ + root files)
+npm publish --access public         # 2FA prompt; creates @themusicdev/jamendo-ts-client on npm
+gh release create v0.1.0 --generate-notes   # tag v0.1.0 + GitHub Release with auto notes
 ```
 
-After the run:
-- npmjs.com shows the new version with a green **Provenance** badge (links
-  the tarball to the exact commit) — automatic, no flag needed.
-- GitHub Releases page reflects the tag.
+Then on npmjs.com (now that the package exists):
+- https://www.npmjs.com/package/@themusicdev/jamendo-ts-client → Settings →
+  Trusted Publisher → add GitHub Actions:
+  - Organization/user: `TheMusicDev`
+  - Repository: `jamendo-ts-client`
+  - Workflow filename: `release.yml` (filename only)
+  - Environment: `release`
+- Same page → Publishing access → **"Require 2FA and disallow tokens"**
+  (kills token publishing; only OIDC from here on).
 
-Common pitfalls:
-- **E404** → trusted publisher config mismatch (org/repo/workflow/env must
-  match release.yml exactly, case-sensitive).
+Optional: repo Settings → Environments → New environment `release` (add
+required reviewers if you want a human gate before publish).
+
+### Phase 2 — first automated release v0.1.1 (proves the pipeline works)
+
+Trusted publisher is now configured, so a pushed `v*` tag publishes via
+OIDC **and** creates the GitHub Release in one run.
+
+```sh
+# bump version in package.json: 0.1.0 → 0.1.1
+git commit -am "chore(release): v0.1.1"
+git tag v0.1.1
+git push && git push --tags          # tag fires release.yml
+```
+
+release.yml (run: `publish`, environment `release`):
+1. bun install / build / typecheck / test
+2. `setup-node` (Node 24) + npm latest
+3. `npm publish --access public` (OIDC — no token; provenance automatic)
+4. `gh release create v0.1.1 --generate-notes` (GitHub Release with notes
+   grouped by `.github/release.yml`)
+
+Verify: npmjs.com shows 0.1.1 with a green Provenance badge; the Releases
+page has v0.1.1 with grouped notes.
+
+### Phase 3 — every subsequent release (same as Phase 2)
+
+```sh
+# bump version in package.json
+git commit -am "chore(release): vX.Y.Z"
+git tag vX.Y.Z
+git push && git push --tags
+```
+One tag → npm publish (OIDC + provenance) + GitHub Release. That's the whole
+recurring flow.
+
+### Why release.yml must not run for 0.1.0
+
+It would either fail OIDC (no trusted publisher yet) or fail with
+"cannot publish over the previously published version 0.1.0". So 0.1.0 is
+manual by design. From 0.1.1 the tag does everything.
+
+### Common pitfalls
+
+- **E404 on publish** → trusted publisher config mismatch (org/repo/workflow/
+  env must match release.yml exactly, case-sensitive).
+- **`version already exists`** → the tag doesn't match `package.json`
+  `version` (npm rejects mismatches), or you pushed the same tag twice.
 - **Legacy token path used** → a `NODE_AUTH_TOKEN` env is set somewhere;
-  remove it (release.yml does not set one — do not add it).
+  release.yml does NOT set one — don't add it.
 - `package.json` `repository.url` must exactly match the GitHub repo.
 
-## Recommended publish order
+## Checklist (overall)
 
-1. ~~`npm login`~~ — done. Verify `npm whoami` shows the `@themusicdev` member.
-2. ~~Decide the 9 dead schema exports~~ — done (unexported, dead-code 0).
-3. ~~Add `release.yml` + `npm pack` CI job~~ — done. `sideEffects` deferred
-   to issue #10.
-4. Open a PR for `chore/pre-publish-cleanup` (this branch), review, merge.
-   The CI branch (`ci/setup-pr-agent-and-checks`) is already in `main` — do
-   not touch it.
-5. **First publish — manual (one-time).** `npm whoami` → `bun run build` →
-   `npm publish --access public`. Creates the package on npm (no provenance
-   for this bootstrap version). See "Trusted Publishing setup" step 1.
-6. **Configure Trusted Publishing** on npmjs.com (package → Settings →
-   Trusted Publisher → GitHub Actions: TheMusicDev / jamendo-ts-client /
-   release.yml / release). Then harden: "Require 2FA and disallow tokens".
-   See "Trusted Publishing setup" steps 2-4.
-7. **Later releases** via tag — `git tag v0.1.1 && git push --tags` fires
-   release.yml (OIDC, provenance automatic). See "Triggering a release".
-8. Verify on npmjs.com: readme renders, repo link present, tarball
-   contains only `dist` + `package.json` + README + LICENSE, Provenance badge
-   (from the first OIDC release onward).
+- [x] `npm login` — done. Verify `npm whoami` shows the `@themusicdev` member.
+- [x] Dead schema exports — done (unexported, dead-code 0).
+- [x] `release.yml` + `npm pack` CI job — done. `sideEffects` deferred to
+      issue #10.
+- [ ] Merge PR #11 (`chore/pre-publish-cleanup`). The CI branch
+      (`ci/setup-pr-agent-and-checks`) is already in `main` — don't touch it.
+- [ ] Phase 1: hand `npm publish` v0.1.0 → `gh release create v0.1.0` →
+      configure Trusted Publisher on npmjs.com → harden (disallow tokens).
+- [ ] Phase 2: bump → `git tag v0.1.1 && git push --tags` (first OIDC release).
+- [ ] Verify on npmjs.com: readme renders, repo link present, tarball is
+      only `dist/` + `package.json` + README + LICENSE, Provenance badge.

@@ -22,7 +22,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: read
+  contents: write # create the GitHub Release after publish
   id-token: write # npm Trusted Publishing (OIDC) — no token secret needed
 
 concurrency:
@@ -61,3 +61,11 @@ jobs:
       # Do NOT set NODE_AUTH_TOKEN — that forces the legacy token path and
       # disables OIDC. Provenance is automatic for public packages.
       - run: npm publish --access public
+      # Create the GitHub Release with auto-generated notes (grouped by
+      # conventional-commit type via .github/release.yml). GITHUB_REF_NAME is
+      # the tag (e.g. v0.1.1). Runs after publish, so a failed publish skips
+      # this too (the `needs`-like ordering of steps). Skip on the bootstrap
+      # 0.1.0 run — that release is created by hand (see pre-publish.md).
+      - run: gh release create "$GITHUB_REF_NAME" --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
