@@ -42,10 +42,11 @@ jobs:
           # limits are independent (no shared OpenRouter 20 RPM pool, no
           # correlated 429s). Free tier: 1 concurrent, light usage, resets
           # every 5h session / 7d weekly. ollama_chat/ prefix (not ollama/)
-          # enables Bearer auth via OLLAMA_API_KEY. gpt-oss:120b-cloud is a
-          # level-4 (heavy) model — may exhaust the free weekly quota faster
-          # than a lighter model; swap to e.g. gpt-oss:20b-cloud if it does.
-          config.model_weak: 'ollama_chat/gpt-oss:120b-cloud'
+          # enables Bearer auth via OLLAMA_API_KEY. gpt-oss:20b-cloud is the
+          # lighter cloud variant — avoids the level-4 (heavy) 120b model that
+          # would exhaust the free weekly quota faster. /describe is light
+          # work (PR summary); 20b is ample.
+          config.model_weak: 'ollama_chat/gpt-oss:20b-cloud'
           OLLAMA_API_BASE: 'https://ollama.com'
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
           config.fallback_models: '["openrouter/free","openrouter/anthropic/claude-haiku-4.5"]'
