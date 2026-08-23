@@ -1,19 +1,16 @@
 /**
- * Demo consumer for @themusicdev/jamendo-ts-client.
+ * Example consumer for @themusicdev/jamendo-ts-client — imports directly
+ * from ../dist (run `bun run build` first) rather than through the package
+ * name, so it always exercises the current local build.
  *
  * Run from the repo root so Bun auto-loads the root .env:
- *   bun demo/index.ts
- * Or from inside demo/ — the script falls back to ../.env.
+ *   bun examples/index.ts
+ * Or from inside examples/ — the script falls back to ../.env.
  */
-import {
-    createJamendoClient,
-    JamendoError,
-    JamendoRateLimit,
-    JamendoSchemaError,
-} from '@themusicdev/jamendo-ts-client';
+import { createJamendoClient, JamendoError, JamendoRateLimit, JamendoSchemaError } from '../dist/index.js';
 
 // ponytail: Bun auto-loads .env from cwd only; fall back to repo root .env
-// so this demo works whether run from demo/ or the repo root.
+// so this example works whether run from examples/ or the repo root.
 if (!process.env.JAMENDO_CLIENT_ID) {
     const text = await Bun.file('../.env')
         .text()
@@ -30,7 +27,7 @@ if (!process.env.JAMENDO_CLIENT_ID) {
 
 const clientId = process.env.JAMENDO_CLIENT_ID;
 if (!clientId) {
-    console.error('JAMENDO_CLIENT_ID missing. Run from repo root or fill demo/.env.');
+    console.error('JAMENDO_CLIENT_ID missing. Run from repo root or fill examples/.env.');
     process.exit(1);
 }
 
