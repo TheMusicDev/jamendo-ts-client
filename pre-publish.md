@@ -56,8 +56,10 @@ rest are open. Last updated 2026-08-22.
       builds/tests, Node publishes. Version bump is manual: bump
       `package.json` `version`, commit, tag, push the tag. The workflow does
       NOT bump — it publishes whatever version is in `package.json` at the
-      tagged commit. Also added `.github/release.yml` (groups conventional-
-      commit labels into release-note sections). See "Three phases" below.
+      tagged commit. Release notes use GitHub's default auto-generated list
+      (commit subjects since the last tag) — conventional-commit prefixes
+      (`feat:`/`fix:`/`chore:`) make it scannable without a grouping config.
+      See "Three phases" below.
 - [x] **`npm pack --dry-run` CI job.** Added a `pack` job to
       `.github/workflows/ci_check.yml` that builds, runs
       `npm pack --dry-run --json`, and asserts every packed path is under
@@ -124,8 +126,9 @@ release.yml (run: `publish`, environment `release`):
 1. bun install / build / typecheck / test
 2. `setup-node` (Node 24) + npm latest
 3. `npm publish --access public` (OIDC — no token; provenance automatic)
-4. `gh release create v0.1.1 --generate-notes` (GitHub Release with notes
-   grouped by `.github/release.yml`)
+4. `gh release create v0.1.1 --generate-notes` (GitHub Release; notes are
+   the commit subjects since v0.1.0 — conventional prefixes make them
+   scannable)
 
 Verify: npmjs.com shows 0.1.1 with a green Provenance badge; the Releases
 page has v0.1.1 with grouped notes.
