@@ -23,12 +23,21 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENROUTER.KEY: ${{ secrets.OPENROUTER_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          # Paid primary for reliability (CI gate runs on every PR). Free tier
-          # has no SLA and 502s on anonymous single-provider models (Stealth).
-          # Haiku 4.5: $1/M in, $5/M out ≈ $0.01–0.05 per review. Supports tools.
-          # Free router is the fallback — needs ≥$10 credits for 1000/day cap.
-          config.model: 'openrouter/anthropic/claude-haiku-4.5'
-          config.fallback_models: '["openrouter/free"]'
+          # PR-Agent is advisory (workflow stays green on LLM failure, not a
+          # merge gate), so free-first is the right cost/quality trade. Ladder:
+          # 1. z-ai/glm-5.2:free — free, 256k ctx, MULTI-provider (Decart,
+          #    Fireworks, Venice, Baseten +27) so OpenRouter reroutes on a
+          #    provider 502 (unlike single-provider Stealth free models).
+          #    Tool calling + structured output. Solid for code review.
+          # 2. openrouter/free — free meta-router across ~24 free variants.
+          # 3. anthropic/claude-haiku-4.5 — paid last resort ($1/M in, $5/M
+          #    out) only fires when both free tiers error. Needs the $10
+          #    balance (also unlocks 1000 free/day cap).
+          # Caveat: fallback fires on ERROR only. A free model that succeeds
+          # with a weak review is kept — no quality escalation to Haiku.
+          # Acceptable for advisory review.
+          config.model: 'z-ai/glm-5.2:free'
+          config.fallback_models: '["openrouter/free","openrouter/anthropic/claude-haiku-4.5"]'
           # custom_model_max_tokens declares Haiku's context window (input
           # budget), NOT output reservation. Haiku 4.5 has a 200k window.
           config.custom_model_max_tokens: '200000'
