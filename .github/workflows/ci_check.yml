@@ -60,11 +60,7 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
-      - run: bun test
-        env:
-          # integration tests skip themselves without a client id, so the
-          # default run stays offline
-          JAMENDO_CLIENT_ID: ''
+      - run: bun run test
 
   dead-code:
     name: dead-code
