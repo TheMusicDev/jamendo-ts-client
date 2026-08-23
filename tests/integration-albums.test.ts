@@ -23,7 +23,9 @@ it('integration: albums.list returns typed results', async () => {
 
 it('integration: albums.tracks returns albums with nested tracks', async () => {
     const client = createJamendoClient({ clientId: clientId! });
-    const res = await client.albums.tracks({ limit: 2 });
+    // Jamendo's /albums/tracks 500s on the fully-unfiltered query; namesearch
+    // avoids it (same shape of workaround as the other resource tests).
+    const res = await client.albums.tracks({ limit: 2, namesearch: 'rock' });
     expect(Array.isArray(res.results)).toBe(true);
     expect(res.results.length).toBeLessThanOrEqual(2);
 });
