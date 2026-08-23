@@ -29,11 +29,15 @@ jobs:
           # Free router is the fallback — needs ≥$10 credits for 1000/day cap.
           config.model: 'openrouter/anthropic/claude-haiku-4.5'
           config.fallback_models: '["openrouter/free"]'
-          # OpenRouter reserves max_tokens × output-price credits per call.
-          # With $10 balance it caps reservation at ~8000 tokens; PR-Agent's
-          # improve command requests 2× this value, so 4000 → 8000 requested,
-          # under the credit limit. Reviews need a few hundred output tokens.
-          config.custom_model_max_tokens: '4000'
+          # custom_model_max_tokens declares Haiku's context window (input
+          # budget), NOT output reservation. Haiku 4.5 has a 200k window.
+          config.custom_model_max_tokens: '200000'
+          # openrouter.max_tokens is the hard cap on COMPLETION (output) tokens
+          # — the value OpenRouter reserves credits against (max_tokens ×
+          # output price). Haiku = $5/M out, so 4000 out → $0.02 reserved/call,
+          # affordable on a $10 balance. Reviews/improvements need a few
+          # hundred output tokens; 4000 is ample headroom.
+          openrouter.max_tokens: '4000'
           github_action_config.auto_review: 'true'
           github_action_config.auto_describe: 'true'
           github_action_config.auto_improve: 'true'
