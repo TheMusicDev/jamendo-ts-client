@@ -137,6 +137,11 @@ Integration tests (hit the live API, one file per resource under
 JAMENDO_CLIENT_ID=... bun run test:integration
 ```
 
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md), generated from conventional commits on
+every release.
+
 ## License
 
 MIT

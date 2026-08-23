@@ -47,10 +47,13 @@ jobs:
       - run: bun run build
       - run: bun run check:types
       - run: bun run test
+      # CHANGELOG.md is regenerated locally and committed as part of the
+      # release commit before tagging (see PUBLISH.md) — CI never writes to
+      # main, so there's no push-race or re-run-idempotency concern here.
       # Trusted Publishing needs npm CLI v11.5.1+ on Node 22.14+ (Node 24
       # recommended). Bun's bundled npm-cli may not support the OIDC exchange,
       # so install the real npm CLI on Node 24 for the publish step.
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
