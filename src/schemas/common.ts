@@ -24,3 +24,11 @@ export const LocalizedTextSchema = z.object({
 });
 
 export type LocalizedText = z.infer<typeof LocalizedTextSchema>;
+
+/**
+ * URL fields the API returns as `""` when a resource has none (e.g. no
+ * license, no artist website) rather than omitting the key. Plain
+ * `z.string().url()` rejects `""`, so every URL-typed field must use this
+ * instead of `z.string().url()` directly.
+ */
+export const UrlOrEmptySchema = z.union([z.string().url(), z.literal('')]);

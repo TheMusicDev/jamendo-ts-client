@@ -12,18 +12,34 @@ import { z } from 'zod';
  * `core/request.ts` instead of the element-schema array path.
  */
 
-export const AutocompleteMatchSchema = z.object({
-    match: z.string(),
-    /** Only present when `matchcount=true` is passed. */
-    count: z.number().int().optional(),
-});
+/**
+ * Without `matchcount=true` each entry is a bare match string; with it, an
+ * object carrying the match count. The API switches shape per-request, not
+ * per-entity, so every bucket accepts either.
+ */
+export const AutocompleteMatchSchema = z.union([
+    z.string(),
+    z.object({
+        match: z.string(),
+        count: z.number().int().optional(),
+    }),
+]);
 
-export const AutocompleteResultsSchema = z.object({
-    tags: z.array(AutocompleteMatchSchema).optional(),
-    artists: z.array(AutocompleteMatchSchema).optional(),
-    tracks: z.array(AutocompleteMatchSchema).optional(),
-    albums: z.array(AutocompleteMatchSchema).optional(),
-});
+/**
+ * The API intermittently sends `results: []` (an empty array) instead of the
+ * keyed object when there are no matches in any bucket — an empty-results
+ * sentinel, not a documented alternate shape. Normalize it to `{}` before
+ * validating; a bare `[]` carries no bucket data either way.
+ */
+export const AutocompleteResultsSchema = z.preprocess(
+    (val) => (Array.isArray(val) ? {} : val),
+    z.object({
+        tags: z.array(AutocompleteMatchSchema).optional(),
+        artists: z.array(AutocompleteMatchSchema).optional(),
+        tracks: z.array(AutocompleteMatchSchema).optional(),
+        albums: z.array(AutocompleteMatchSchema).optional(),
+    })
+);
 
 export type AutocompleteMatch = z.infer<typeof AutocompleteMatchSchema>;
 export type AutocompleteResults = z.infer<typeof AutocompleteResultsSchema>;

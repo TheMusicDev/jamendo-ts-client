@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { UrlOrEmptySchema } from './common';
 import { AudioDLFormatSchema, AudioFormatSchema, ImageSizeSchema, ListParamsSchema } from './params';
 
 /**
@@ -24,9 +25,11 @@ const MusicInfoSchema = z.object({
     tags: MusicInfoTagsSchema.optional(),
 });
 
-const WaveformSchema = z.object({
-    peaks: z.array(z.number().int()).optional(),
-});
+// ponytail: Jamendo returns waveform as a JSON-encoded string (e.g.
+// '{"peaks": [23, 19, ...]}'), not an object. Schema previously declared it an
+// object, which rejected every real tracks.list response. If a typed peaks
+// shape is wanted later, wrap with z.preprocess(JSON.parse, WaveformSchema).
+const WaveformSchema = z.string();
 
 export const TrackSchema = z.object({
     id: z.string(),
@@ -37,17 +40,17 @@ export const TrackSchema = z.object({
     artist_idstr: z.string().optional(),
     album_name: z.string().optional(),
     album_id: z.string().optional(),
-    license_ccurl: z.string().url().optional(),
+    license_ccurl: UrlOrEmptySchema.optional(),
     position: z.number().int().optional(),
     releasedate: z.string().optional(),
-    album_image: z.string().url().optional(),
-    audio: z.string().url().optional(),
-    audiodownload: z.string().url().optional(),
+    album_image: UrlOrEmptySchema.optional(),
+    audio: UrlOrEmptySchema.optional(),
+    audiodownload: UrlOrEmptySchema.optional(),
     prourl: z.string().optional(),
-    shorturl: z.string().url().optional(),
-    shareurl: z.string().url().optional(),
+    shorturl: UrlOrEmptySchema.optional(),
+    shareurl: UrlOrEmptySchema.optional(),
     waveform: WaveformSchema.optional(),
-    image: z.string().url().optional(),
+    image: UrlOrEmptySchema.optional(),
     audiodownload_allowed: z.boolean().optional(),
     content_id_free: z.boolean().optional(),
     musicinfo: MusicInfoSchema.optional(),

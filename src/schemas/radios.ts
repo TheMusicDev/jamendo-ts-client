@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { UrlOrEmptySchema } from './common';
 import { ImageSizeSchema, ListParamsSchema } from './params';
 
 /**
@@ -14,7 +15,7 @@ export const RadioSchema = z.object({
     name: z.string(),
     dispname: z.string().optional(),
     type: z.enum(['www', 'pro']).optional(),
-    image: z.string().url().optional(),
+    image: UrlOrEmptySchema.optional(),
 });
 
 export type Radio = z.infer<typeof RadioSchema>;
@@ -46,7 +47,7 @@ const RadioPlayingNowSchema = z.object({
     album_id: z.number().int().optional(),
     album_name: z.string().optional(),
     track_name: z.string().optional(),
-    track_image: z.string().url().optional(),
+    track_image: UrlOrEmptySchema.optional(),
     artist_name: z.string().optional(),
 });
 
@@ -59,7 +60,7 @@ export type RadioPlayingNow = z.infer<typeof RadioPlayingNowSchema>;
  * possibly never fixed — treat as unreliable.
  */
 export const RadioStreamSchema = RadioSchema.extend({
-    stream: z.string().url().optional(),
+    stream: UrlOrEmptySchema.optional(),
     playingnow: RadioPlayingNowSchema.optional(),
     callmeback: z.string().optional(),
 });

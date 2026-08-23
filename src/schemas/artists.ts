@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { LocalizedTextSchema } from './common';
+import { LocalizedTextSchema, UrlOrEmptySchema } from './common';
 import { AudioDLFormatSchema, AudioFormatSchema, ImageSizeSchema, ListParamsSchema } from './params';
 
 /**
@@ -14,11 +14,11 @@ import { AudioDLFormatSchema, AudioFormatSchema, ImageSizeSchema, ListParamsSche
 export const ArtistSchema = z.object({
     id: z.string(),
     name: z.string(),
-    website: z.string().url().optional(),
+    website: UrlOrEmptySchema.optional(),
     joindate: z.string().optional(),
-    image: z.string().url().optional(),
-    shorturl: z.string().url().optional(),
-    shareurl: z.string().url().optional(),
+    image: UrlOrEmptySchema.optional(),
+    shorturl: UrlOrEmptySchema.optional(),
+    shareurl: UrlOrEmptySchema.optional(),
 });
 
 /** Nested track as it appears inside an artist (`/artists/tracks`). */
@@ -29,11 +29,11 @@ const ArtistTrackItemSchema = z.object({
     name: z.string().optional(),
     duration: z.string().optional(),
     releasedate: z.string().optional(),
-    license_ccurl: z.string().url().optional(),
-    album_image: z.string().url().optional(),
-    image: z.string().url().optional(),
-    audio: z.string().url().optional(),
-    audiodownload: z.string().url().optional(),
+    license_ccurl: UrlOrEmptySchema.optional(),
+    album_image: UrlOrEmptySchema.optional(),
+    image: UrlOrEmptySchema.optional(),
+    audio: UrlOrEmptySchema.optional(),
+    audiodownload: UrlOrEmptySchema.optional(),
     audiodownload_allowed: z.boolean().optional(),
 });
 
@@ -42,7 +42,7 @@ const ArtistAlbumItemSchema = z.object({
     id: z.string().optional(),
     name: z.string().optional(),
     releasedate: z.string().optional(),
-    image: z.string().url().optional(),
+    image: UrlOrEmptySchema.optional(),
 });
 
 /** Geographic location entry (`/artists/locations`). */

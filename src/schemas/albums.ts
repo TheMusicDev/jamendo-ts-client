@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { LocalizedTextSchema } from './common';
+import { LocalizedTextSchema, UrlOrEmptySchema } from './common';
 import { AudioDLFormatSchema, AudioFormatSchema, ImageSizeSchema, ListParamsSchema } from './params';
 
 /**
@@ -17,11 +17,11 @@ export const AlbumSchema = z.object({
     releasedate: z.string().optional(),
     artist_id: z.string().optional(),
     artist_name: z.string().optional(),
-    image: z.string().url().optional(),
-    zip: z.string().url().optional(),
+    image: UrlOrEmptySchema.optional(),
+    zip: UrlOrEmptySchema.optional(),
     zip_allowed: z.boolean().optional(),
-    shorturl: z.string().url().optional(),
-    shareurl: z.string().url().optional(),
+    shorturl: UrlOrEmptySchema.optional(),
+    shareurl: UrlOrEmptySchema.optional(),
 });
 
 /**
@@ -36,9 +36,9 @@ export const AlbumTrackItemSchema = z.object({
     position: z.string().optional(),
     name: z.string().optional(),
     duration: z.string().optional(),
-    license_ccurl: z.string().url().optional(),
-    audio: z.string().url().optional(),
-    audiodownload: z.string().url().optional(),
+    license_ccurl: UrlOrEmptySchema.optional(),
+    audio: UrlOrEmptySchema.optional(),
+    audiodownload: UrlOrEmptySchema.optional(),
     audiodownload_allowed: z.boolean().optional(),
 });
 
