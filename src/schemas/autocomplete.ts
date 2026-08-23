@@ -28,8 +28,10 @@ export const AutocompleteMatchSchema = z.union([
 /**
  * The API intermittently sends `results: []` (an empty array) instead of the
  * keyed object when there are no matches in any bucket — an empty-results
- * sentinel, not a documented alternate shape. Normalize it to `{}` before
- * validating; a bare `[]` carries no bucket data either way.
+ * sentinel, not a documented alternate shape. Normalized to `{}` before
+ * validating, so callers only ever see the object shape below and never the
+ * raw `[]`; a bare `[]` carries no bucket data either way, so nothing is
+ * lost by collapsing it.
  */
 export const AutocompleteResultsSchema = z.preprocess(
     (val) => (Array.isArray(val) ? {} : val),
@@ -42,6 +44,12 @@ export const AutocompleteResultsSchema = z.preprocess(
 );
 
 export type AutocompleteMatch = z.infer<typeof AutocompleteMatchSchema>;
+
+/**
+ * Always the keyed-bucket shape — `AutocompleteResultsSchema` normalizes the
+ * API's occasional `results: []` sentinel to `{}` at parse time, so this
+ * type never reflects a raw array.
+ */
 export type AutocompleteResults = z.infer<typeof AutocompleteResultsSchema>;
 
 /**

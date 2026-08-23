@@ -30,9 +30,12 @@ export const FeedSchema = z.object({
         .enum(['album', 'artist', 'playlist', 'track', 'news', 'interview', 'contest', 'video', 'update'])
         .optional(),
     joinid: z.string().optional(),
-    // API sends `[]` (empty array sentinel) when there's no subtitle, or a
+    // API sends `[]` (empty-array sentinel) when there's no subtitle, or a
     // LocalizedText object when there is — never a populated string array.
-    subtitle: z.union([z.array(z.string()), LocalizedTextSchema]).optional(),
+    // Preprocess drops the sentinel to undefined so the public type is a
+    // plain LocalizedText, with no dead "always-empty array" branch to
+    // confuse consumers.
+    subtitle: z.preprocess((val) => (Array.isArray(val) ? undefined : val), LocalizedTextSchema.optional()),
     target: z.enum(['all', 'logged', 'notlogged']).optional(),
     images: FeedImagesSchema.optional(),
 });
