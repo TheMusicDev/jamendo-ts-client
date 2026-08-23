@@ -106,6 +106,11 @@ Then on npmjs.com (now that the package exists):
   - Environment: `release`
 - Same page → Publishing access → **"Require 2FA and disallow tokens"**
   (kills token publishing; only OIDC from here on).
+- Same page → Allowed Actions → check **"Allow npm publish"** only.
+  `release.yml` runs `npm publish --access public` (standard publish) —
+  that's the action this checkbox gates. Leave **"Allow npm stage publish"**
+  unchecked; it gates npm's staged/unpublished pre-release feature
+  (`npm publish --stage`), which the workflow does not use.
 
 Optional: repo Settings → Environments → New environment `release` (add
 required reviewers if you want a human gate before publish).
