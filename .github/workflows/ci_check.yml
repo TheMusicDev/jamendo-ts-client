@@ -36,6 +36,9 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
+      # examples/index.ts imports ../dist directly, so types can't resolve
+      # without a build first.
+      - run: bun run build
       - run: bun run check:types
 
   lint:
@@ -126,6 +129,9 @@ jobs:
         with:
           bun-version: 1.3.14
       - run: bun install --frozen-lockfile
+      # examples/index.ts imports ../dist directly, so fallow can't resolve
+      # the import without a build first.
+      - run: bun run build
       - run: bun run check:audit
         env:
           FALLOW_AUDIT_BASE: origin/main
